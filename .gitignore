@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.DS_Store
+*.log
+
+# Design docs / mockups (not needed to run or deploy the app)
+*.docx
+*.png
