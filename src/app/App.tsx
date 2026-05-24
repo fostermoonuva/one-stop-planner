@@ -152,6 +152,147 @@ function GroupPicker({ groups, selected, onChange }: { groups: Group[]; selected
   );
 }
 
+function subtaskStats(subtasks: Subtask[] | undefined) {
+  const list = subtasks ?? [];
+  if (!list.length) return null;
+  const done = list.filter(s => s.done).length;
+  return { done, total: list.length, allDone: done === list.length };
+}
+
+function applySubtaskCompletion(task: CalTask): CalTask {
+  const stats = subtaskStats(task.subtasks);
+  if (stats?.allDone) return { ...task, done: true };
+  return task;
+}
+
+function TaskSubtaskBadge({ subtasks, accentColor = "#6366F1" }: { subtasks: Subtask[] | undefined; accentColor?: string }) {
+  const stats = subtaskStats(subtasks);
+  if (!stats) return null;
+  return (
+    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{ backgroundColor: `${accentColor}20`, color: accentColor }}>
+      {stats.done}/{stats.total}
+    </span>
+  );
+}
+
+function SubtaskEditor({
+  subtasks, onChange, parentDueDate, accentColor = "#6366F1",
+}: {
+  subtasks: Subtask[];
+  onChange: (subtasks: Subtask[]) => void;
+  parentDueDate: string;
+  accentColor?: string;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  const add = () => {
+    if (!newTitle.trim()) return;
+    onChange([...subtasks, { id: uid(), title: newTitle.trim(), dueDate: newDate || parentDueDate, done: false }]);
+    setNewTitle("");
+    setNewDate("");
+  };
+
+  const toggle = (id: string) => onChange(subtasks.map(st => st.id === id ? { ...st, done: !st.done } : st));
+  const remove = (id: string) => onChange(subtasks.filter(st => st.id !== id));
+
+  return (
+    <div>
+      <p className="mb-1.5" style={labelSty}>Subtasks (optional)</p>
+      {subtasks.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {subtasks.map(st => (
+            <div key={st.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
+              <button type="button" onClick={() => toggle(st.id)} className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
+                style={{ borderColor: accentColor, backgroundColor: st.done ? accentColor : "transparent" }}>
+                {st.done && <Check size={10} className="text-white" />}
+              </button>
+              <span className="flex-1 text-xs" style={{ color: st.done ? "#7878A4" : "#EEEEF8", textDecoration: st.done ? "line-through" : "none" }}>
+                {st.title}
+                {st.dueDate && st.dueDate !== parentDueDate && (
+                  <span style={{ color: "#4E4E72" }}> ({st.dueDate})</span>
+                )}
+              </span>
+              <button type="button" onClick={() => remove(st.id)}>
+                <X size={12} style={{ color: "#4E4E72" }} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="space-y-2">
+        <input className={inputCls} style={{ ...inputSty, fontSize: 12 }} placeholder="Subtask name" value={newTitle}
+          onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
+        <div className="grid grid-cols-2 gap-2">
+          <input type="date" className={inputCls} style={{ ...inputSty, fontSize: 12 }} value={newDate}
+            onChange={e => setNewDate(e.target.value)} />
+          <button type="button" onClick={add} className="py-2 rounded-xl font-bold text-xs text-white" style={{ backgroundColor: accentColor }}>
+            Add subtask
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaskSubtaskSection({ task, accentColor, onUpdate }: {
+  task: CalTask; accentColor: string; onUpdate: (t: CalTask) => void;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const stats = subtaskStats(task.subtasks);
+
+  const updateSubtasks = (subtasks: Subtask[]) => onUpdate(applySubtaskCompletion({ ...task, subtasks }));
+
+  const add = () => {
+    if (!newTitle.trim()) return;
+    updateSubtasks([...(task.subtasks || []), { id: uid(), title: newTitle.trim(), dueDate: task.dueDate, done: false }]);
+    setNewTitle("");
+  };
+
+  const toggle = (id: string) => {
+    const next = (task.subtasks || []).map(st => st.id === id ? { ...st, done: !st.done } : st);
+    updateSubtasks(next);
+  };
+
+  return (
+    <div>
+      <p className="mb-2" style={{ ...labelSty, fontSize: 9 }}>
+        Subtasks{stats ? ` (${stats.done}/${stats.total})` : ""}
+      </p>
+      {(task.subtasks?.length ?? 0) > 0 && (
+        <div className="space-y-2 mb-3">
+          {(task.subtasks ?? []).map(st => (
+            <div key={st.id} className="flex items-start gap-2.5 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
+              <button type="button" onClick={() => toggle(st.id)}
+                className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ borderColor: accentColor, backgroundColor: st.done ? accentColor : "transparent" }}>
+                {st.done && <Check size={10} className="text-white" />}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm" style={{ color: st.done ? "#7878A4" : "#EEEEF8", textDecoration: st.done ? "line-through" : "none" }}>
+                  {st.title}
+                </p>
+                {st.dueDate && st.dueDate !== task.dueDate && (
+                  <p className="text-xs mt-0.5" style={{ color: "#4E4E72" }}>{fmtDateStr(st.dueDate)}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input className={inputCls} style={{ ...inputSty, fontSize: 12 }} placeholder="Add a subtask…" value={newTitle}
+          onChange={e => setNewTitle(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
+        <button type="button" onClick={add} className="px-4 py-2 rounded-xl font-bold text-xs text-white flex-shrink-0"
+          style={{ backgroundColor: newTitle.trim() ? accentColor : "rgba(99,102,241,.35)", color: newTitle.trim() ? "#fff" : "#6366F1" }}>
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.72)", backdropFilter: "blur(10px)" }} onClick={onClose}>
@@ -334,7 +475,12 @@ function TodayView({
     if (tab === "all" || tab === "tasks") {
       timedTasks.forEach(t => {
         const sM = t2m(t.dueTime);
-        items.push({ id: t.id, title: t.title, startMin: sM, endMin: sM + 30, type: "task", color: gColor(groups, t.groupId), done: t.done });
+        const st = subtaskStats(t.subtasks);
+        items.push({
+          id: t.id, title: t.title, startMin: sM, endMin: sM + 30, type: "task",
+          color: gColor(groups, t.groupId), done: t.done,
+          subtitle: st ? `${st.done}/${st.total} subtasks` : undefined,
+        });
       });
     }
     if (tab === "events") {
@@ -456,10 +602,13 @@ function TodayView({
                       style={{ borderColor: gColor(groups, t.groupId), backgroundColor: t.done ? gColor(groups, t.groupId) : "transparent" }}>
                       {t.done && <Check size={10} className="text-white" />}
                     </button>
-                    <p className="text-sm font-medium flex-1"
-                      style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? "#4E4E72" : "#EEEEF8" }}>
-                      {t.title}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium"
+                        style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? "#4E4E72" : "#EEEEF8" }}>
+                        {t.title}
+                      </p>
+                    </div>
+                    <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
                     {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>
                       {gName(groups, t.groupId)}
@@ -552,10 +701,13 @@ function TodayView({
                       style={{ borderColor: gColor(groups, t.groupId), backgroundColor: t.done ? gColor(groups, t.groupId) : "transparent" }}>
                       {t.done && <Check size={10} className="text-white" />}
                     </button>
-                    <p className="text-sm font-medium flex-1"
-                      style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? "#4E4E72" : "#EEEEF8" }}>
-                      {t.title}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium"
+                        style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? "#4E4E72" : "#EEEEF8" }}>
+                        {t.title}
+                      </p>
+                    </div>
+                    <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
                     {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>
                       {gName(groups, t.groupId)}
@@ -1271,16 +1423,21 @@ function TaskModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; 
   const [repeatDays, setRepeatDays] = useState<number[]>([]);
   const [groupId, setGroupId] = useState("");
   const [notes, setNotes] = useState("");
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
 
   const submit = () => {
     if (!title.trim()) return;
-    onAdd({ id: uid(), title: title.trim(), dueDate, dueTime, groupId, notes, repeatDays, done: false, subtasks: [] });
+    const task: CalTask = {
+      id: uid(), title: title.trim(), dueDate, dueTime, groupId, notes, repeatDays,
+      done: false, subtasks,
+    };
+    onAdd(applySubtaskCompletion(task));
     onClose();
   };
 
   return (
     <ModalShell title="New Task" onClose={onClose}>
-      <input className={inputCls} style={inputSty} placeholder="Task name" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+      <input className={inputCls} style={inputSty} placeholder="Main task name" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
       <div><p className="mb-1.5" style={labelSty}>Due Date</p>
         <input type="date" className={inputCls} style={inputSty} value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
       <div><p className="mb-1.5" style={labelSty}>Due Time (optional)</p>
@@ -1289,6 +1446,7 @@ function TaskModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; 
       <div><p className="mb-1.5" style={labelSty}>Group</p><GroupPicker groups={groups} selected={groupId} onChange={setGroupId} /></div>
       <div><p className="mb-1.5" style={labelSty}>Notes</p>
         <textarea className={inputCls} style={{ ...inputSty, resize: "none" } as React.CSSProperties} rows={2} placeholder="Additional notes..." value={notes} onChange={e => setNotes(e.target.value)} /></div>
+      <SubtaskEditor subtasks={subtasks} onChange={setSubtasks} parentDueDate={dueDate} accentColor={groupId ? gColor(groups, groupId) : "#6366F1"} />
       <button onClick={submit} className="w-full py-4 rounded-2xl font-bold text-sm"
         style={{ backgroundColor: title.trim() ? "#6366F1" : "rgba(99,102,241,.3)", color: title.trim() ? "#fff" : "#6366F1" }}>
         {title.trim() ? "Add Task" : "Enter a name to continue"}
@@ -1511,23 +1669,6 @@ function TaskEditForm({ task, groups, onSave, onCancel }: { task: CalTask; group
   const [groupId, setGroupId] = useState(task.groupId);
   const [notes, setNotes] = useState(task.notes);
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [newSubtaskDate, setNewSubtaskDate] = useState("");
-
-  const addSubtask = () => {
-    if (!newSubtaskTitle.trim()) return;
-    setSubtasks([...subtasks, { id: uid(), title: newSubtaskTitle.trim(), dueDate: newSubtaskDate || dueDate, done: false }]);
-    setNewSubtaskTitle("");
-    setNewSubtaskDate("");
-  };
-
-  const toggleSubtask = (id: string) => {
-    setSubtasks(subtasks.map(st => st.id === id ? { ...st, done: !st.done } : st));
-  };
-
-  const deleteSubtask = (id: string) => {
-    setSubtasks(subtasks.filter(st => st.id !== id));
-  };
 
   return (
     <div className="space-y-4 pt-2">
@@ -1540,39 +1681,10 @@ function TaskEditForm({ task, groups, onSave, onCancel }: { task: CalTask; group
       <div><p className="mb-1.5" style={labelSty}>Group</p><GroupPicker groups={groups} selected={groupId} onChange={setGroupId} /></div>
       <div><p className="mb-1.5" style={labelSty}>Notes</p>
         <textarea className={inputCls} style={{ ...inputSty, resize: "none" } as React.CSSProperties} rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
-
-      <div>
-        <p className="mb-1.5" style={labelSty}>Subtasks</p>
-        {subtasks.length > 0 && (
-          <div className="space-y-1.5 mb-2">
-            {subtasks.map(st => (
-              <div key={st.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
-                <button onClick={() => toggleSubtask(st.id)} className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
-                  style={{ borderColor: "#6366F1", backgroundColor: st.done ? "#6366F1" : "transparent" }}>
-                  {st.done && <Check size={10} className="text-white" />}
-                </button>
-                <span className="flex-1 text-xs" style={{ color: st.done ? "#7878A4" : "#EEEEF8", textDecoration: st.done ? "line-through" : "none" }}>
-                  {st.title} {st.dueDate && st.dueDate !== dueDate && <span style={{ color: "#4E4E72" }}>({st.dueDate})</span>}
-                </span>
-                <button onClick={() => deleteSubtask(st.id)}>
-                  <X size={12} style={{ color: "#4E4E72" }} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="space-y-2">
-          <input className={inputCls} style={{ ...inputSty, fontSize: 12 }} placeholder="Subtask name" value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && addSubtask()} />
-          <div className="grid grid-cols-2 gap-2">
-            <input type="date" className={inputCls} style={{ ...inputSty, fontSize: 12 }} placeholder="Due date (optional)" value={newSubtaskDate} onChange={e => setNewSubtaskDate(e.target.value)} />
-            <button onClick={addSubtask} className="py-2 rounded-xl font-bold text-xs text-white" style={{ backgroundColor: "#6366F1" }}>Add Subtask</button>
-          </div>
-        </div>
-      </div>
+      <SubtaskEditor subtasks={subtasks} onChange={setSubtasks} parentDueDate={dueDate} accentColor={groupId ? gColor(groups, groupId) : "#6366F1"} />
 
       <div className="flex gap-2">
-        <button onClick={() => onSave({ ...task, title, dueDate, dueTime, repeatDays, groupId, notes, subtasks })}
+        <button onClick={() => onSave(applySubtaskCompletion({ ...task, title, dueDate, dueTime, repeatDays, groupId, notes, subtasks }))}
           className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white" style={{ backgroundColor: "#6366F1" }}>Save</button>
         <button onClick={onCancel} className="flex-1 py-3.5 rounded-2xl font-bold text-sm"
           style={{ backgroundColor: "rgba(255,255,255,.07)", color: "#7878A4" }}>Cancel</button>
@@ -1789,35 +1901,11 @@ function DetailModal({
                   {task.repeatDays.length > 0 && <InfoRow icon="🔁" label="Repeats">{task.repeatDays.map(d => DS[d]).join(", ")}</InfoRow>}
                   {task.notes && <InfoRow icon="📝" label="Notes">{task.notes}</InfoRow>}
 
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div>
-                      <p className="mb-2" style={{ ...labelSty, fontSize: 9 }}>Subtasks ({task.subtasks.filter(st => st.done).length}/{task.subtasks.length})</p>
-                      <div className="space-y-2">
-                        {task.subtasks.map(st => (
-                          <div key={st.id} className="flex items-start gap-2.5 p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
-                            <button onClick={() => {
-                              const updated = { ...task, subtasks: task.subtasks.map(s => s.id === st.id ? { ...s, done: !s.done } : s) };
-                              onUpdateTask(updated);
-                            }}
-                              className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 mt-0.5"
-                              style={{ borderColor: gColor(groups, task.groupId), backgroundColor: st.done ? gColor(groups, task.groupId) : "transparent" }}>
-                              {st.done && <Check size={10} className="text-white" />}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm" style={{ color: st.done ? "#7878A4" : "#EEEEF8", textDecoration: st.done ? "line-through" : "none" }}>
-                                {st.title}
-                              </p>
-                              {st.dueDate && (
-                                <p className="text-xs mt-0.5" style={{ color: "#4E4E72" }}>
-                                  {fmtDateStr(st.dueDate)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <TaskSubtaskSection
+                    task={task}
+                    accentColor={gColor(groups, task.groupId)}
+                    onUpdate={onUpdateTask}
+                  />
                 </>
               )}
 
