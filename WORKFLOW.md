@@ -31,11 +31,13 @@ You test on your phone (live URL)
 
 ### 1.2 Keep these accounts ready (bookmarks)
 
-| Service | URL | What it’s for |
-|---------|-----|----------------|
-| **Supabase** | https://supabase.com/dashboard/project/mtkkyeaiefeihtqzxmwq | Database, auth, API keys |
-| **Vercel** | https://vercel.com/dashboard | Live app hosting |
-| **GitHub** | Your repo page | Code backup + triggers deploy |
+
+| Service      | URL                                                                                                                        | What it’s for                 |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Supabase** | [https://supabase.com/dashboard/project/mtkkyeaiefeihtqzxmwq](https://supabase.com/dashboard/project/mtkkyeaiefeihtqzxmwq) | Database, auth, API keys      |
+| **Vercel**   | [https://vercel.com/dashboard](https://vercel.com/dashboard)                                                               | Live app hosting              |
+| **GitHub**   | Your repo page                                                                                                             | Code backup + triggers deploy |
+
 
 ### 1.3 Local `.env` (only on your computer)
 
@@ -78,16 +80,18 @@ VITE_SUPABASE_ANON_KEY=<your full anon key starting with eyJ...>
 
 ### 2.2 Where the AI will usually edit
 
-| Area | File(s) |
-|------|---------|
-| Main app / screens | `src/app/App.tsx` |
-| Login / sign up | `src/components/AuthScreen.tsx` |
-| Account menu | `src/components/AccountMenu.tsx` |
-| Auth logic | `src/lib/auth.ts`, `src/hooks/useAuth.ts` |
-| Saving to cloud | `src/lib/plannerStorage.ts` |
-| Supabase connection | `src/lib/supabase.ts` |
-| Colors / fonts | `src/styles/theme.css` |
+
+| Area                      | File(s)                                              |
+| ------------------------- | ---------------------------------------------------- |
+| Main app / screens        | `src/app/App.tsx`                                    |
+| Login / sign up           | `src/components/AuthScreen.tsx`                      |
+| Account menu              | `src/components/AccountMenu.tsx`                     |
+| Auth logic                | `src/lib/auth.ts`, `src/hooks/useAuth.ts`            |
+| Saving to cloud           | `src/lib/plannerStorage.ts`                          |
+| Supabase connection       | `src/lib/supabase.ts`                                |
+| Colors / fonts            | `src/styles/theme.css`                               |
 | New database table/column | `supabase/schema.sql` (you must run SQL in Supabase) |
+
 
 You don’t need to name these files — the AI will find them. Naming the **screen** (Today, Month, Goals) is enough.
 
@@ -95,7 +99,11 @@ You don’t need to name these files — the AI will find them. Naming the **scr
 
 - You usually **don’t** need to edit code yourself
 - You **don’t** need to run SQL unless the AI says “run this in Supabase SQL Editor”
-- You **don’t** need to change Vercel env vars unless the AI adds **new** `VITE_*` variables
+- You **don’t** need to change Vercel env vars unless the AI adds **new** `VITE_`* variables
+
+### 2.4 README stays current
+
+[`README.md`](README.md) documents **all current functionality**. When you ask for a new feature, the AI should update that file in the same change (see `.cursor/rules/update-readme.mdc`). Skim **Current functionality** after a deploy if you want a product-level overview.
 
 ---
 
@@ -112,7 +120,7 @@ npm run dev
 
 ### 3.2 Open the app
 
-- Browser: **http://localhost:5173**
+- Browser: **[http://localhost:5173](http://localhost:5173)**
 - Sign in with your **username + password** (same account as phone)
 
 ### 3.3 If the AI changed code but you don’t see it
@@ -124,12 +132,14 @@ npm run dev
 
 ### 3.4 If login / data doesn’t work locally
 
-| Problem | Fix |
-|---------|-----|
-| “Supabase not configured” | Fix `.env`, restart `npm run dev` |
-| “Failed to fetch” | Check Supabase project isn’t paused; fix URL in `.env` |
-| “Email signups disabled” | Supabase → Authentication → Email → enable sign ups |
-| Data missing | Sign in with the same username you use on phone |
+
+| Problem                   | Fix                                                    |
+| ------------------------- | ------------------------------------------------------ |
+| “Supabase not configured” | Fix `.env`, restart `npm run dev`                      |
+| “Failed to fetch”         | Check Supabase project isn’t paused; fix URL in `.env` |
+| “Email signups disabled”  | Supabase → Authentication → Email → enable sign ups    |
+| Data missing              | Sign in with the same username you use on phone        |
+
 
 ### 3.5 Optional: test on phone at home (same Wi‑Fi)
 
@@ -160,7 +170,7 @@ Those are ignored in `.gitignore`. Close Word if a doc is open, then `git add .`
 
 ### 4.2 Wait for Vercel
 
-1. Go to **https://vercel.com/dashboard**
+1. Go to **[https://vercel.com/dashboard](https://vercel.com/dashboard)**
 2. Open your **One Stop Planner** project
 3. Open **Deployments** — a new build should appear (1–3 minutes)
 4. When status is **Ready**, tap the deployment URL
@@ -191,10 +201,12 @@ Vercel rebuilds automatically when you **push to GitHub** (if the project is con
 
 **Current variables (typical):**
 
-| Name (exact) | Value (example) |
-|--------------|-----------------|
-| `VITE_SUPABASE_URL` | `https://mtkkyeaiefeihtqzxmwq.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | Full `eyJ...` key from Supabase → API |
+
+| Name (exact)             | Value (example)                            |
+| ------------------------ | ------------------------------------------ |
+| `VITE_SUPABASE_URL`      | `https://mtkkyeaiefeihtqzxmwq.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Full `eyJ...` key from Supabase → API      |
+
 
 **Rules:**
 
@@ -211,7 +223,7 @@ Vercel rebuilds automatically when you **push to GitHub** (if the project is con
 
 ### 6.1 Run new SQL
 
-1. **https://supabase.com/dashboard** → your project
+1. **[https://supabase.com/dashboard](https://supabase.com/dashboard)** → your project
 2. **SQL Editor** → New query
 3. Paste SQL from `supabase/schema.sql` or from the AI message
 4. **Run**
@@ -229,7 +241,7 @@ Vercel rebuilds automatically when you **push to GitHub** (if the project is con
 **Authentication → URL configuration**
 
 - **Site URL:** `https://YOUR-APP.vercel.app`
-- **Redirect URLs:** `https://YOUR-APP.vercel.app/**`
+- **Redirect URLs:** `https://YOUR-APP.vercel.app/`**
 
 Replace with your real Vercel URL.
 
@@ -279,15 +291,17 @@ git push
 
 ## Part 9 — When something goes wrong
 
-| Symptom | Likely cause | What to do |
-|---------|--------------|------------|
-| Works locally, not on phone | Old Vercel deploy or wrong env vars | Redeploy; check Vercel env vars |
-| Nothing works after AI edit | Dev server needs restart | Ctrl+C → `npm run dev` |
-| Git “permission denied” on .docx | File open in Word | Close Word; files are gitignored |
-| `'branch' is not recognized` | Missing `git` | Use `git branch -M main` |
-| Vercel “invalid characters” in env name | Pasted `NAME=value` in name field | Name = `VITE_SUPABASE_URL` only |
-| Lost data | Wrong account or new user | Sign in with original username |
-| Build fails on Vercel | TypeScript error | Send build log to AI |
+
+| Symptom                                 | Likely cause                        | What to do                       |
+| --------------------------------------- | ----------------------------------- | -------------------------------- |
+| Works locally, not on phone             | Old Vercel deploy or wrong env vars | Redeploy; check Vercel env vars  |
+| Nothing works after AI edit             | Dev server needs restart            | Ctrl+C → `npm run dev`           |
+| Git “permission denied” on .docx        | File open in Word                   | Close Word; files are gitignored |
+| `'branch' is not recognized`            | Missing `git`                       | Use `git branch -M main`         |
+| Vercel “invalid characters” in env name | Pasted `NAME=value` in name field   | Name = `VITE_SUPABASE_URL` only  |
+| Lost data                               | Wrong account or new user           | Sign in with original username   |
+| Build fails on Vercel                   | TypeScript error                    | Send build log to AI             |
+
 
 ---
 
@@ -309,3 +323,4 @@ Write these here so you don’t have to look them up:
 - **GitHub repo:** `https://github.com/________________/________________`
 - **Vercel live app:** `https://________________.vercel.app`
 - **Supabase project:** `https://supabase.com/dashboard/project/mtkkyeaiefeihtqzxmwq`
+

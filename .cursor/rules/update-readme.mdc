@@ -1,0 +1,30 @@
+---
+description: Keep README.md updated whenever app functionality changes
+alwaysApply: true
+---
+
+# Update README when functionality changes
+
+Whenever you add, remove, or meaningfully change **user-facing** behavior in One Stop Planner, update [`README.md`](README.md) in the **same change**.
+
+## What counts
+
+- New screens, tabs, modals, menus, or navigation items
+- New fields or behaviors for events, tasks, subtasks, meals, workouts, goals, groups
+- Auth, sync, storage, or account UX changes
+- New setup/deploy requirements (env vars, SQL, Vercel steps)
+
+## What to edit in README.md
+
+1. **Current functionality** — add or adjust the relevant table rows
+2. **How the app works** / **Data model** — if save shape or sync behavior changed
+3. **Tech stack** / **Project structure** — if new packages or major files were added
+4. **Last major feature documented** (bottom of README) — one-line note of what just shipped
+
+Do **not** remove setup/deploy sections unless they are wrong. Prefer editing tables over rewriting the whole file.
+
+## Checklist before finishing a feature
+
+- [ ] Feature implemented and consistent with existing UI patterns
+- [ ] `README.md` reflects the new behavior
+- [ ] Mention the README update briefly in the reply to the user

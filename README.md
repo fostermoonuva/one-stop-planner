@@ -1,101 +1,268 @@
 # One Stop Planner
 
-Unified life planner from the [Figma Make design](https://www.figma.com/make/2ULVMYxiSGscNIaBneXMiG/Unified-Life-Planner-App).
+A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, meals, and goals — with username/password accounts and cloud sync via Supabase.
 
-## Stack
+**Design source:** [Figma Make — Unified Life Planner](https://www.figma.com/make/2ULVMYxiSGscNIaBneXMiG/Unified-Life-Planner-App)
 
-- React 18 + TypeScript + Vite
-- Tailwind CSS 4
-- Supabase (username/password accounts + cloud save)
+> **Maintainer note:** Keep this README in sync whenever features change. See [Keeping this README updated](#keeping-this-readme-updated).
 
-## Accounts & cloud sync
+---
 
-Each account uses a **username + password**. Your events, tasks, meals, workouts, and goals are stored in Supabase and load automatically when you sign in on any device.
+## Table of contents
 
-Usernames are 3–24 characters: letters, numbers, and underscores.
+1. [How the app works](#how-the-app-works)
+2. [Current functionality](#current-functionality)
+3. [Tech stack](#tech-stack)
+4. [Project structure](#project-structure)
+5. [Setup (local)](#setup-local)
+6. [Deploy (phone / anywhere)](#deploy-phone--anywhere)
+7. [Keeping this README updated](#keeping-this-readme-updated)
 
-## One-time Supabase setup
+---
 
-1. Create a free project at [supabase.com](https://supabase.com) (or use the Figma Make project).
+## How the app works
 
-2. Copy `.env.example` → `.env` and fill in:
-   - **Project Settings → API → Project URL** → `VITE_SUPABASE_URL`
-   - **anon public** key → `VITE_SUPABASE_ANON_KEY`
+### High-level flow
 
-3. In **SQL Editor**, run the script in [`supabase/schema.sql`](supabase/schema.sql).
+1. You open the app (localhost or Vercel URL).
+2. If not signed in, you see **Sign in / Create account** (username + password).
+3. After auth, your planner data loads from **Supabase** (with a local browser backup).
+4. You use five main tabs: **Today**, **Month**, **Workout**, **Meal**, **Goals**.
+5. The purple **+** FAB opens a menu to add Event, Task, Meal, Workout, or Goal.
+6. Changes auto-save to the cloud (~0.7s after you edit) and to a per-user local backup.
 
-4. In **Authentication → Providers → Email**, turn **off** “Confirm email” (required because logins use an internal `@one-stop-planner.local` address).
+### Accounts & sync
 
-5. Ensure **Sign ups** are enabled under Authentication settings.
+| Piece | Behavior |
+|--------|----------|
+| Username | 3–24 chars: letters, numbers, underscores |
+| Password | At least 6 characters |
+| Auth backend | Supabase Auth (email provider; usernames map to `username@one-stop-planner.local`) |
+| Cloud storage | One JSON blob per user in table `planner_data` |
+| Local backup | `localStorage` key `lifeplanner_v2:<userId>` |
+| First login | If cloud is empty, migrates legacy `lifeplanner_v2` data if present |
+| Sign out | Today tab → initials (top right) → Account → Sign out |
 
-## Run locally
+### Data model (what gets saved)
+
+| Entity | Main fields |
+|--------|-------------|
+| **Events** | Title, start/end date & time, optional repeat days, group, notes |
+| **Tasks** | Title, due date/time, optional repeat, group, notes, done flag, **subtasks** |
+| **Subtasks** | Title, optional due date, done flag (nested under a task) |
+| **Meals** | Name, type (breakfast/lunch/dinner/snack), date/time, calories, protein/carbs/fat |
+| **Workouts** | Name, date, start/end time, exercises with sets (weight, reps, done) |
+| **Goals** | Title, days of week, amount + unit (times/minutes), group |
+| **Goal logs** | Per goal + date when completed |
+| **Groups** | Named color tags (School, Work, Personal, Fitness, Food, Wellness by default) |
+| **Active workout** | In-progress session (name, start time, live exercises/sets) |
+
+---
+
+## Current functionality
+
+### Global chrome
+
+| Feature | Description |
+|---------|-------------|
+| Bottom navigation | Today · Month · Workout · Meal · Goals |
+| Floating + button | Opens add menu (Event, Task, Meal, Workout, Goal) |
+| Account menu | Initials on Today → username, sync status, sign out |
+| Detail sheets | Tap an item to view, edit, delete, or toggle completion |
+| Theme | Dark UI, indigo/violet accents, Inter font |
+
+### Today
+
+| Feature | Description |
+|---------|-------------|
+| Date header | Day name + month/day; chevrons to change day |
+| Jump to today | “Today” chip when viewing another day |
+| Week strip | 7-day strip centered on selected date; today outline; selected dot |
+| Filter tabs | All · Events · Tasks · Goals · Active (with count badges) |
+| Timeline | Hour grid (~6 AM–11 PM); overlapping layout; now line on current day |
+| Events on timeline | Colored cards with group color, title, subtitle, time range |
+| Timed tasks | On timeline with checkbox styling; optional “N/M subtasks” subtitle |
+| Untimed tasks | “Due Today” list with complete toggle + subtask progress badge |
+| Goals for the day | List with log/unlog for selected date |
+| Active / workouts | In-progress workout banner + completed workouts for the day |
+| Empty state | “Nothing scheduled — tap + to add” |
+
+### Month
+
+| Feature | Description |
+|---------|-------------|
+| Month calendar | Navigate months with chevrons |
+| Workload colors | Green → yellow → orange → red by event+task count that day |
+| Legend | Light / Moderate / Busy / Overloaded |
+| Day select | Tap a day to set the selected date (used by Today / Meal) |
+
+### Workout
+
+| Feature | Description |
+|---------|-------------|
+| Start workout | Name the session → full-screen active overlay |
+| Active overlay | Live timer, add exercises, add sets (lbs/reps), mark sets done |
+| Finish / cancel | Saves completed workout to history, or discard |
+| History | Cards with duration, exercises, sets done, volume |
+| Resume | Resume in-progress workout from banner or Workout tab |
+
+### Meal
+
+| Feature | Description |
+|---------|-------------|
+| Day navigation | Prev/next day |
+| Daily totals | Calories + protein / carbs / fat |
+| By meal type | Breakfast, lunch, dinner, snack sections |
+| Log meal | Name, description, type, date/time, macros |
+| Empty slots | “+ Log {type}” dashed buttons |
+
+### Goals
+
+| Feature | Description |
+|---------|-------------|
+| Goal cards | Title, amount/unit, schedule days, group chip |
+| 7-day streak bars | Last 7 days; logged / scheduled / empty states |
+| Log today | Toggle completion for today when goal applies |
+| Groups | Color chips + Manage (add/delete custom groups) |
+| New goal | Days required; optional group |
+
+### Events (add / detail)
+
+| Feature | Description |
+|---------|-------------|
+| New event | Name, start date, start/end time, optional repeat days, end/until date, group, notes |
+| Detail | View dates, times, repeats, notes; edit or delete |
+
+### Tasks & subtasks (add / detail)
+
+| Feature | Description |
+|---------|-------------|
+| New task | Main task name, due date/time, repeat, group, notes |
+| Subtasks on create | Optional list while creating a task |
+| Subtasks on detail | Add and check off without entering Edit |
+| Subtasks on edit | Full editor: add, toggle, remove, optional per-subtask due date |
+| Progress badge | Task rows show `done/total` when subtasks exist |
+| Auto-complete parent | When all subtasks are done, the main task is marked done |
+
+### Auth screens
+
+| Feature | Description |
+|---------|-------------|
+| Sign in | Username + password |
+| Sign up | Username + password + confirm |
+| Setup gate | If env vars missing, shows “Supabase not configured” help |
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|-------|--------|
+| UI | React 18 + TypeScript |
+| Build | Vite 6 |
+| Styling | Tailwind CSS 4 |
+| Icons | lucide-react |
+| Auth + DB | Supabase (`@supabase/supabase-js`) |
+| Hosting (typical) | Vercel |
+
+---
+
+## Project structure
+
+```
+src/
+  main.tsx                 # Entry
+  Root.tsx                 # Auth gate → App
+  app/App.tsx              # Screens, modals, planner state
+  components/
+    AuthScreen.tsx         # Sign in / sign up
+    AccountMenu.tsx        # Account sheet
+  hooks/useAuth.ts         # Session + sign in/up/out
+  lib/
+    supabase.ts            # Client from VITE_* env
+    auth.ts                # Username ↔ email helpers
+    plannerStorage.ts      # Cloud + local load/save
+  styles/                  # Tailwind, theme, fonts
+supabase/schema.sql        # planner_data table + RLS
+WORKFLOW.md                # How to iterate and deploy
+README.md                  # This file
+```
+
+---
+
+## Setup (local)
+
+### Prerequisites
+
+- Node.js + npm
+- A Supabase project
+
+### Environment
+
+1. Copy `.env.example` → `.env`
+2. Set:
+
+```env
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_or_publishable_key
+```
+
+3. In Supabase **SQL Editor**, run [`supabase/schema.sql`](supabase/schema.sql).
+4. **Authentication → Providers → Email:** enable Email + sign ups; **disable Confirm email**.
+
+### Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`, create an account, and start planning.
-
-## Build
+Open http://localhost:5173
 
 ```bash
-npm run build
-npm run preview
+npm run build    # production build
+npm run preview  # preview build
+npm run dev:phone  # expose on LAN for same-Wi‑Fi phone testing
 ```
 
-## Sign out
+---
 
-On the **Today** tab, tap your initials (top right) → **Sign out**.
+## Deploy (phone / anywhere)
 
-## Use on your phone (anywhere)
+1. Push the repo to GitHub.
+2. Import on [Vercel](https://vercel.com); set the same two `VITE_*` env vars; deploy.
+3. In Supabase **Authentication → URL configuration**, set Site URL / Redirect URLs to your Vercel URL.
+4. Open the live URL on your phone → sign in → optional **Add to Home Screen**.
 
-Deploy to **Vercel** (free). Takes about 10 minutes.
+See [`WORKFLOW.md`](WORKFLOW.md) for the full day-to-day change → test → push → redeploy loop.
 
-### 1. Put the project on GitHub
+---
 
-In the project folder:
+## Keeping this README updated
 
-```bash
-git init
-git add .
-git commit -m "One Stop Planner"
+**Rule:** Whenever you add, remove, or change user-facing behavior, update this README in the same change (especially [Current functionality](#current-functionality) and [How the app works](#how-the-app-works) if the data model or sync behavior changes).
+
+### What to update
+
+| Change type | Update these sections |
+|-------------|------------------------|
+| New screen / tab / modal | Current functionality |
+| New fields on events/tasks/etc. | Data model + relevant feature table |
+| Auth / sync / storage | How the app works → Accounts & sync |
+| New package or folder | Tech stack / Project structure |
+| Setup or deploy steps | Setup / Deploy |
+
+### For Cursor / AI sessions
+
+A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh this file when shipping new functionality. Human checklist after a feature:
+
+```
+[ ] Feature works on localhost
+[ ] README “Current functionality” (and data model if needed) updated
+[ ] Commit includes README.md
+[ ] Push → verify on Vercel / phone
 ```
 
-Create a **new** repo on [github.com/new](https://github.com/new) (e.g. `one-stop-planner`), then:
+### Last major feature documented
 
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/one-stop-planner.git
-git branch -M main
-git push -u origin main
-```
-
-### 2. Deploy on Vercel
-
-1. Go to [vercel.com](https://vercel.com) → **Add New** → **Project**
-2. Import your GitHub repo
-3. **Environment Variables** — add both (copy from your `.env`):
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Click **Deploy**
-
-You’ll get a URL like `https://one-stop-planner.vercel.app`.
-
-### 3. Allow the URL in Supabase
-
-[Supabase Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **URL configuration**:
-
-- **Site URL:** `https://your-app.vercel.app`
-- **Redirect URLs:** add `https://your-app.vercel.app/**`
-
-Save.
-
-### 4. On your phone
-
-1. Open the Vercel URL in Safari or Chrome
-2. Sign in with your username and password
-3. **Add to Home Screen** for an app icon:
-   - **iPhone:** Share → Add to Home Screen
-   - **Android:** Menu → Add to Home screen / Install app
-
-Your data syncs from Supabase — same account as on your computer.
+- **Tasks with subtasks** — create with optional subtasks; add/toggle from task detail; progress badges; parent auto-complete when all subtasks done.

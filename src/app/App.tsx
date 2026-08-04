@@ -3,7 +3,7 @@ import {
   Home, BarChart3, Utensils, Target,
   Plus, X, Check, ChevronLeft, ChevronRight,
   Dumbbell, Settings, Trash2,
-  Play, MoreHorizontal, Calendar,
+  Play, MoreHorizontal, Calendar, ChevronDown,
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import type { PlannerDataPayload } from "../lib/plannerStorage";
@@ -22,7 +22,7 @@ export interface AppProps {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Screen     = "today" | "workout" | "month" | "meal" | "goals";
+type Screen     = "home" | "workout" | "calendar" | "meal" | "goals";
 type TodayTab   = "all" | "events" | "tasks" | "goals" | "active";
 type ModalKind  = "event" | "task" | "meal" | "goal" | "startWorkout" | "groups";
 type DetailKind = "event" | "task" | "goal" | "meal" | "workout";
@@ -40,14 +40,14 @@ interface CalWorkout { id: string; name: string; date: string; startTime: string
 interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; }
 interface GoalLog    { id: string; goalId: string; date: string; }
 interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; }
-interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; }
+interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; subtaskDone?: number; subtaskTotal?: number; }
 interface LayItem extends TLItem { col: number; totalCols: number; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 const DF = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const MF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const TL_START = 6 * 60, TL_END = 23 * 60, TL_H = TL_END - TL_START;
+const TL_START = 0 * 60, TL_END = 24 * 60, TL_H = TL_END - TL_START;
 const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#34D399","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
 const DEFAULT_GROUPS: Group[] = [
   { id:"g1", name:"School",   color:"#818CF8" },
@@ -332,7 +332,7 @@ function InfoRow({ icon, label, children }: { icon: string; label: string; child
 // ─── Timeline Renderer ────────────────────────────────────────────────────────
 function Timeline({ items, nowMin, onItemClick }: { items: TLItem[]; nowMin?: number; onItemClick?: (id: string, type: string) => void; }) {
   const laidOut = computeLayout(items);
-  const HOURS = Array.from({ length: TL_END / 60 - TL_START / 60 + 1 }, (_, i) => i + TL_START / 60);
+  const HOURS = Array.from({ length: (TL_END - TL_START) / 60 }, (_, i) => i + TL_START / 60);
 
   return (
     <div className="relative" style={{ height: TL_H, minHeight: TL_H }}>
@@ -344,7 +344,7 @@ function Timeline({ items, nowMin, onItemClick }: { items: TLItem[]; nowMin?: nu
           <div className="flex-1 border-t" style={{ borderColor: "rgba(255,255,255,.04)", marginTop: 4 }} />
         </div>
       ))}
-      {nowMin !== undefined && nowMin >= TL_START && nowMin <= TL_END && (
+      {nowMin !== undefined && nowMin >= TL_START && nowMin < TL_END && (
         <div className="absolute left-0 right-0 flex items-center z-20" style={{ top: nowMin - TL_START }}>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ marginLeft: 38, backgroundColor: "#6366F1" }} />
           <div className="flex-1 h-px" style={{ backgroundColor: "#6366F1" }} />
@@ -550,6 +550,45 @@ function TodayView({
       {/* Week strip */}
       <div className="flex-shrink-0">
         <WeekStrip selectedDate={selectedDate} onNavigate={setSelectedDate} />
+      </div>
+
+      {/* Daily Completion Rings */}
+      <div className="px-4 pb-2 flex-shrink-0">
+        {(() => {
+          const totalTasks = (timedTasks.length + untimedTasks.length);
+          const completedTasks = (timedTasks.concat(untimedTasks)).filter(t => t.done).length;
+          const tasksPct = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+          const activeGoals = todaysGoals.length;
+          const completedGoals = todaysGoals.filter(g => goalLogs.some(l => l.goalId === g.id && l.date === dKey(selectedDate))).length;
+          const goalsPct = activeGoals === 0 ? 0 : Math.round((completedGoals / activeGoals) * 100);
+
+          const eventCount = eventsOnDay.length + workoutsOnDay.length;
+          const passedEvents = eventsOnDay.filter(e => t2m(e.endTime) && isToday(selectedDate) ? t2m(e.endTime) <= NowMin : false).length +
+            workoutsOnDay.filter(w => t2m(w.endTime) && isToday(selectedDate) ? t2m(w.endTime) <= NowMin : false).length;
+          const eventsPct = eventCount === 0 ? 0 : Math.round((passedEvents / eventCount) * 100);
+
+          const Ring = ({ pct, color, label, subtitle }: { pct: number; color: string; label: string; subtitle: string }) => (
+            <div className="flex flex-col items-center" style={{ width: 88 }}>
+              <svg viewBox="0 0 36 36" style={{ width: 56, height: 56 }}>
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="3.5" />
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  fill="none" stroke={color} strokeWidth="3.5" strokeDasharray={`${pct},100`} strokeLinecap="round" />
+                <text x="18" y="20.5" fontSize="7" textAnchor="middle" fill="#fff" fontWeight={700}>{pct}%</text>
+              </svg>
+              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6, fontWeight: 700 }}>{label}</p>
+              <p style={{ fontSize: 11, color: "#4E4E72", marginTop: 2 }}>{subtitle}</p>
+            </div>
+          );
+
+          return (
+            <div className="flex items-center gap-4 px-1">
+              <Ring pct={tasksPct} color="#6366F1" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
+              <Ring pct={goalsPct} color="#34D399" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
+              <Ring pct={eventsPct} color="#F97316" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Filter tabs */}
@@ -926,9 +965,10 @@ function WorkoutScreen({
 }
 
 // ─── Month View ───────────────────────────────────────────────────────────────
-function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks }: {
+function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrillDown }: {
   selectedDate: Date; setSelectedDate: (d: Date) => void;
   calEvents: CalEvent[]; calTasks: CalTask[];
+  onDrillDown?: (d: Date) => void;
 }) {
   const [viewDate, setViewDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   const year = viewDate.getFullYear(), month = viewDate.getMonth();
@@ -937,17 +977,49 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks }: {
   const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const wlFor = (day: number) => {
+  const DEFAULT_TASK_MINUTES = 30;
+
+  function wlFor(day: number) {
     const d = new Date(year, month, day);
-    const n = dayCount(d, calEvents, calTasks);
-    return n === 0 ? null : n <= 2 ? "#22C55E" : n <= 4 ? "#EAB308" : n <= 6 ? "#F97316" : "#EF4444";
-  };
+    // Events that apply to this date
+    const events = calEvents.filter(e => eventApplies(e, d));
+    // Tasks that apply to this date
+    const tasks = calTasks.filter(t => taskApplies(t, d));
+
+    const totalTasks = tasks.length;
+    const timedTasks = tasks.filter(t => t.dueTime && t.dueTime.trim()).length;
+
+    // Sum event minutes using start/end times when available
+    const eventMinutes = events.reduce((acc, ev) => {
+      const start = t2m(ev.startTime || "");
+      const end = t2m(ev.endTime || "");
+      const dur = Math.max(0, end - start);
+      return acc + dur;
+    }, 0);
+
+    const estimatedTaskMinutes = totalTasks * DEFAULT_TASK_MINUTES;
+    const combinedMinutes = eventMinutes + estimatedTaskMinutes;
+    const combinedHours = combinedMinutes / 60;
+
+    // Determine level using combined load AND task counts per spec
+    // Light: <2 hours AND ≤2 tasks
+    // Moderate: 2–5 hours OR 3–5 tasks
+    // Busy: >5 hours OR ≥6 tasks
+    let level: "light" | "moderate" | "busy" | null = null;
+    if (combinedMinutes === 0 && totalTasks === 0) level = null;
+    else if (combinedHours < 2 && totalTasks <= 2) level = "light";
+    else if ((combinedHours >= 2 && combinedHours <= 5) || (totalTasks >= 3 && totalTasks <= 5)) level = "moderate";
+    else if (combinedHours > 5 || totalTasks >= 6) level = "busy";
+
+    const color = level === "light" ? "#22C55E" : level === "moderate" ? "#EAB308" : level === "busy" ? "#EF4444" : null;
+    return { level, color, totalTasks, timedTasks, combinedHours };
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-3 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>Month</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>Calendar</p>
           <h1 className="text-white font-bold" style={{ fontSize: 18 }}>{MF[month]} {year}</h1>
         </div>
         <div className="flex gap-1.5 mb-1">
@@ -961,7 +1033,7 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks }: {
         </div>
       </div>
       <div className="px-5 pb-2 flex-shrink-0 flex gap-3">
-        {[["Light","#22C55E"],["Moderate","#EAB308"],["Busy","#F97316"],["Overloaded","#EF4444"]].map(([l,c]) => (
+        {[["Light","#22C55E"],["Moderate","#EAB308"],["Busy","#EF4444"]].map(([l,c]) => (
           <div key={l} className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
             <span style={{ fontSize: 8, color: "#4E4E72", fontWeight: 600 }}>{l}</span>
@@ -980,16 +1052,30 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks }: {
             const d = new Date(year, month, day);
             const isSel = dKey(d) === dKey(selectedDate);
             const isTod = isToday(d);
-            const wl = wlFor(day);
+            const info = wlFor(day);
+            const color = info?.color ?? null;
             const isPast = dKey(d) < dKey(todayDate());
             return (
-              <button key={i} onClick={() => setSelectedDate(d)}
+              <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
                 className="aspect-square rounded-xl flex flex-col items-center justify-center"
-                style={{ backgroundColor: wl ? `${wl}25` : "rgba(255,255,255,.02)", outline: isSel ? "2px solid #6366F1" : isTod && !isSel ? "1px solid rgba(99,102,241,.4)" : "none" }}>
+                style={{ backgroundColor: color ? `${color}25` : "rgba(255,255,255,.02)", outline: isSel ? "2px solid #6366F1" : isTod && !isSel ? "1px solid rgba(99,102,241,.4)" : "none" }}>
                 <span style={{ fontSize: 13, fontWeight: isSel || isTod ? 700 : 500, color: isSel ? "#818CF8" : isPast ? "rgba(238,238,248,.35)" : "#EEEEF8" }}>
                   {day}
                 </span>
-                {wl && <div className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: wl }} />}
+                {/* Task count badge and combined hours */}
+                {info?.totalTasks ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.04)", color: color ?? "#EEEEF8" }}>
+                      {info.totalTasks} Tasks
+                    </span>
+                    {info.combinedHours > 0 && (
+                      <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700 }}>{info.combinedHours.toFixed(1)}h</span>
+                    )}
+                  </div>
+                ) : (
+                  /* Small dot for activity when no explicit tasks but events exist */
+                  color && <div className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: color }} />
+                )}
               </button>
             );
           })}
@@ -2026,8 +2112,8 @@ function AddMenu({ onSelect, onClose }: { onSelect: (m: ModalKind) => void; onCl
 // ─── Bottom Nav ───────────────────────────────────────────────────────────────
 function BottomNav({ screen, onChange }: { screen: Screen; onChange: (s: Screen) => void }) {
   const items: { id: Screen; icon: React.ElementType; label: string }[] = [
-    { id: "today",   icon: Home,      label: "Today"   },
-    { id: "month",   icon: BarChart3, label: "Month"   },
+    { id: "home",    icon: Home,      label: "Home Page" },
+    { id: "calendar",icon: BarChart3, label: "Calendar"   },
     { id: "workout", icon: Dumbbell,  label: "Workout" },
     { id: "meal",    icon: Utensils,  label: "Meal"    },
     { id: "goals",   icon: Target,    label: "Goals"   },
@@ -2084,11 +2170,12 @@ function applyPlannerPayload(
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App({ userId, username, onSignOut }: AppProps) {
-  const [screen, setScreen]       = useState<Screen>("today");
+  const [screen, setScreen]       = useState<Screen>("home");
   const [todayTab, setTodayTab]   = useState<TodayTab>("all");
   const [modal, setModal]         = useState<ModalKind | null>(null);
   const [addOpen, setAddOpen]     = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(todayDate);
+  const [drillDate, setDrillDate] = useState<Date | null>(null);
   const [showWorkoutOverlay, setShowWorkoutOverlay] = useState(false);
   const [detailItem, setDetailItem] = useState<{ kind: DetailKind; id: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -2209,12 +2296,12 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   // Auto-navigate to the right place after adding so users see their new item
   const handleAddEvent = (e: CalEvent) => {
     setCalEvents(p => [...p, e]);
-    setScreen("today");
+    setScreen("home");
     setTodayTab("all");
   };
   const handleAddTask = (t: CalTask) => {
     setCalTasks(p => [...p, t]);
-    setScreen("today");
+    setScreen("home");
     setTodayTab("all");
     // Navigate to the task's due date so user sees it
     setSelectedDate(new Date(t.dueDate + "T00:00:00"));
@@ -2232,9 +2319,70 @@ export default function App({ userId, username, onSignOut }: AppProps) {
         style={{ height: "100dvh", maxHeight: 900, backgroundColor: "#0B0B10", boxShadow: "0 0 100px rgba(0,0,0,.9)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
-          {screen === "today"   && <TodayView {...sharedProps} todayTab={todayTab} setTodayTab={setTodayTab} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
+          {screen === "home"   && <TodayView {...sharedProps} todayTab={todayTab} setTodayTab={setTodayTab} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
           {screen === "workout" && <WorkoutScreen calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
-          {screen === "month"   && <MonthView {...sharedProps} />}
+          {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
+
+          {drillDate && (
+            <ModalShell title={`${DF[drillDate.getDay()]}, ${MF[drillDate.getMonth()].slice(0,3)} ${drillDate.getDate()}`} onClose={() => setDrillDate(null)}>
+              <div>
+                {/* Build timeline items for the drilled date */}
+                {(() => {
+                  const day = drillDate!;
+                  const now = new Date();
+                  const NowMin = now.getHours() * 60 + now.getMinutes();
+                  const eventsOnDay = calEvents.filter(e => eventApplies(e, day));
+                  const workoutsOnDay = calWorkouts.filter(w => w.date === dKey(day));
+                  const timedTasks = calTasks.filter(t => taskApplies(t, day) && t.dueTime);
+                  const untimedTasks = calTasks.filter(t => taskApplies(t, day) && !t.dueTime);
+
+                  const items: TLItem[] = [];
+                  eventsOnDay.forEach(e => {
+                    const sM = t2m(e.startTime), eM = t2m(e.endTime) || sM + 60;
+                    items.push({ id: e.id, title: e.title, startMin: sM, endMin: Math.max(eM, sM + 30), type: "event", color: gColor(groups, e.groupId), subtitle: e.notes ? e.notes.split("\n")[0] : gName(groups, e.groupId) || undefined });
+                  });
+                  timedTasks.forEach(t => {
+                    const sM = t2m(t.dueTime);
+                    const st = subtaskStats(t.subtasks);
+                    items.push({ id: t.id, title: t.title, startMin: sM, endMin: sM + 30, type: "task", color: gColor(groups, t.groupId), done: t.done, subtitle: st ? `${st.done}/${st.total} subtasks` : undefined });
+                  });
+                  workoutsOnDay.forEach(w => {
+                    const sM = t2m(w.startTime), eM = t2m(w.endTime) || sM + 60;
+                    items.push({ id: w.id, title: w.name, startMin: sM, endMin: Math.max(eM, sM + 30), type: "workout", color: "#34D399", subtitle: `${w.exercises.length} exercise${w.exercises.length !== 1 ? "s" : ""}` });
+                  });
+
+                  return (
+                    <div>
+                      {(items.length > 0) ? (
+                        <Timeline items={items} nowMin={isToday(day) ? NowMin : undefined} onItemClick={(id, type) => openDetail(type === "event" ? "event" : "task", id)} />
+                      ) : (
+                        <div className="p-4 text-center" style={{ color: "#3A3A5A" }}>No scheduled items for this day</div>
+                      )}
+
+                      {untimedTasks.length > 0 && (
+                        <div className="mt-3">
+                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3A3A5A" }}>Due</p>
+                          {untimedTasks.map(t => (
+                            <div key={t.id} className="rounded-xl p-3 mt-2" style={{ ...cardSty }}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white font-semibold text-sm">{t.title}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
+                                  {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>{gName(groups, t.groupId)}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </ModalShell>
+          )}
           {screen === "meal"    && <MealView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} onModal={openModal} onDetail={openDetail} />}
           {screen === "goals"   && <GoalsView calGoals={calGoals} groups={groups} onModal={openModal} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} />}
         </div>
