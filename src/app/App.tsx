@@ -3,7 +3,7 @@ import {
   Home, BarChart3, Utensils, Target,
   Plus, X, Check, ChevronLeft, ChevronRight,
   Dumbbell, Settings, Trash2,
-  Play, MoreHorizontal, Calendar, ChevronDown,
+  Play, MoreHorizontal, Calendar, //ChevronDown,//
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import type { PlannerDataPayload } from "../lib/plannerStorage";
