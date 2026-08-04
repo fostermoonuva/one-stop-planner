@@ -88,8 +88,8 @@ const fmtDateStr = (s: string) => {
   return `${DF[d.getDay()]}, ${MF[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`;
 };
 
-const dayCount = (date: Date, ev: CalEvent[], ta: CalTask[]) =>
-  ev.filter(e => eventApplies(e, date)).length + ta.filter(t => taskApplies(t, date)).length;
+//const dayCount = (date: Date, ev: CalEvent[], ta: CalTask[]) =>
+  //ev.filter(e => eventApplies(e, date)).length + ta.filter(t => taskApplies(t, date)).length;
 
 // ─── Layout Algorithm ─────────────────────────────────────────────────────────
 function computeLayout(items: TLItem[]): LayItem[] {
