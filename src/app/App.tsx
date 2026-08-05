@@ -6,6 +6,7 @@ import {
   Play, MoreHorizontal, Calendar, //ChevronDown,//
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
+import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
 import type { PlannerDataPayload } from "../lib/plannerStorage";
 import {
   loadPlannerData,
@@ -22,34 +23,34 @@ export interface AppProps {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Screen     = "home" | "workout" | "calendar" | "meal" | "goals";
-type TodayTab   = "all" | "events" | "tasks" | "goals" | "active";
-type ModalKind  = "event" | "task" | "meal" | "goal" | "startWorkout" | "groups";
-type DetailKind = "event" | "task" | "goal" | "meal" | "workout";
-type MealType  = "breakfast" | "lunch" | "dinner" | "snack";
-type GoalUnit  = "minutes" | "times";
+export type Screen     = "home" | "workout" | "calendar" | "meal" | "goals";
+export type TodayTab   = "all" | "events" | "tasks" | "goals" | "active";
+export type ModalKind  = "event" | "task" | "meal" | "goal" | "startWorkout" | "groups";
+export type DetailKind = "event" | "task" | "goal" | "meal" | "workout";
+export type MealType  = "breakfast" | "lunch" | "dinner" | "snack";
+export type GoalUnit  = "minutes" | "times";
 
-interface Subtask    { id: string; title: string; dueDate: string; done: boolean; }
-interface Group      { id: string; name: string; color: string; }
-interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; }
-interface CalTask    { id: string; title: string; dueDate: string; dueTime: string; groupId: string; notes: string; done: boolean; repeatDays: number[]; subtasks: Subtask[]; }
-interface CalMeal    { id: string; name: string; description: string; mealType: MealType; date: string; time: string; calories: number; protein: number; carbs: number; fat: number; }
-interface WSet       { wt: number; reps: number; done: boolean; }
-interface WExercise  { id: string; name: string; sets: WSet[]; }
-interface CalWorkout { id: string; name: string; date: string; startTime: string; endTime: string; exercises: WExercise[]; }
-interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; }
-interface GoalLog    { id: string; goalId: string; date: string; }
-interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; }
-interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; subtaskDone?: number; subtaskTotal?: number; }
-interface LayItem extends TLItem { col: number; totalCols: number; }
+export interface Subtask    { id: string; title: string; dueDate: string; done: boolean; }
+export interface Group      { id: string; name: string; color: string; }
+export interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; }
+export interface CalTask    { id: string; title: string; dueDate: string; dueTime: string; groupId: string; notes: string; done: boolean; repeatDays: number[]; subtasks: Subtask[]; }
+export interface CalMeal    { id: string; name: string; description: string; mealType: MealType; date: string; time: string; calories: number; protein: number; carbs: number; fat: number; }
+export interface WSet       { wt: number; reps: number; done: boolean; }
+export interface WExercise  { id: string; name: string; sets: WSet[]; }
+export interface CalWorkout { id: string; name: string; date: string; startTime: string; endTime: string; exercises: WExercise[]; }
+export interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; }
+export interface GoalLog    { id: string; goalId: string; date: string; }
+export interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; }
+export interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; subtaskDone?: number; subtaskTotal?: number; }
+export interface LayItem extends TLItem { col: number; totalCols: number; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const DS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-const DF = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const MF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const TL_START = 0 * 60, TL_END = 24 * 60, TL_H = TL_END - TL_START;
-const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#34D399","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
-const DEFAULT_GROUPS: Group[] = [
+export const DS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+export const DF = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+export const MF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+export const TL_START = 0 * 60, TL_END = 24 * 60, TL_H = TL_END - TL_START;
+export const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#34D399","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
+export const DEFAULT_GROUPS: Group[] = [
   { id:"g1", name:"School",   color:"#818CF8" },
   { id:"g2", name:"Work",     color:"#38BDF8" },
   { id:"g3", name:"Personal", color:"#C084FC" },
@@ -58,32 +59,32 @@ const DEFAULT_GROUPS: Group[] = [
   { id:"g6", name:"Wellness", color:"#F472B6" },
 ];
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const todayDate  = () => { const n = new Date(); n.setHours(0,0,0,0); return n; };
-const dKey    = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(d.getDate() + n); return r; };
-const isToday = (d: Date) => dKey(d) === dKey(todayDate());
-const t2m     = (t: string) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-const m2d     = (m: number) => { const h = Math.floor(m/60), mn = m%60, ap = h>=12?"PM":"AM", hr = h>12?h-12:h===0?12:h; return `${hr}${mn?":"+String(mn).padStart(2,"0"):""} ${ap}`; };
-const fmtT    = (s: number) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-const uid     = () => Math.random().toString(36).slice(2, 9);
-const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
+export const todayDate  = () => { const n = new Date(); n.setHours(0,0,0,0); return n; };
+export const dKey    = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+export const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(d.getDate() + n); return r; };
+export const isToday = (d: Date) => dKey(d) === dKey(todayDate());
+export const t2m     = (t: string) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+export const m2d     = (m: number) => { const h = Math.floor(m/60), mn = m%60, ap = h>=12?"PM":"AM", hr = h>12?h-12:h===0?12:h; return `${hr}${mn?":"+String(mn).padStart(2,"0"):""} ${ap}`; };
+export const fmtT    = (s: number) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+export const uid     = () => Math.random().toString(36).slice(2, 9);
+export const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
 
-const eventApplies = (e: CalEvent, d: Date) => {
+export const eventApplies = (e: CalEvent, d: Date) => {
   const k = dKey(d), dow = d.getDay();
   if (e.repeatDays.length > 0) return k >= e.startDate && (!e.endDate || k <= e.endDate) && e.repeatDays.includes(dow);
   return k >= e.startDate && k <= e.endDate;
 };
-const taskApplies = (t: CalTask, d: Date) => {
+export const taskApplies = (t: CalTask, d: Date) => {
   const k = dKey(d), dow = d.getDay();
   if (t.repeatDays.length > 0) return k >= t.dueDate && t.repeatDays.includes(dow);
   return t.dueDate === k;
 };
-const goalApplies = (g: CalGoal, d: Date) => g.days.includes(d.getDay());
+export const goalApplies = (g: CalGoal, d: Date) => g.days.includes(d.getDay());
 
-const gColor = (groups: Group[], id: string) => groups.find(g => g.id === id)?.color ?? "#6366F1";
-const gName  = (groups: Group[], id: string) => groups.find(g => g.id === id)?.name ?? "None";
+export const gColor = (groups: Group[], id: string) => groups.find(g => g.id === id)?.color ?? "#6366F1";
+export const gName  = (groups: Group[], id: string) => groups.find(g => g.id === id)?.name ?? "None";
 
-const fmtDateStr = (s: string) => {
+export const fmtDateStr = (s: string) => {
   const d = new Date(s + "T00:00:00");
   return `${DF[d.getDay()]}, ${MF[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`;
 };
@@ -112,10 +113,10 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none";
-const inputSty = { backgroundColor: "rgba(255,255,255,.07)", caretColor: "#6366F1" } as React.CSSProperties;
-const labelSty = { color: "#4E4E72", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const };
-const cardSty  = { backgroundColor: "rgba(255,255,255,.05)" } as React.CSSProperties;
+export const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none";
+export const inputSty = { backgroundColor: "rgba(255,255,255,.07)", caretColor: "#6366F1" } as React.CSSProperties;
+export const labelSty = { color: "#4E4E72", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const };
+export const cardSty  = { backgroundColor: "rgba(255,255,255,.05)" } as React.CSSProperties;
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -152,14 +153,14 @@ function GroupPicker({ groups, selected, onChange }: { groups: Group[]; selected
   );
 }
 
-function subtaskStats(subtasks: Subtask[] | undefined) {
+export function subtaskStats(subtasks: Subtask[] | undefined) {
   const list = subtasks ?? [];
   if (!list.length) return null;
   const done = list.filter(s => s.done).length;
   return { done, total: list.length, allDone: done === list.length };
 }
 
-function applySubtaskCompletion(task: CalTask): CalTask {
+export function applySubtaskCompletion(task: CalTask): CalTask {
   const stats = subtaskStats(task.subtasks);
   if (stats?.allDone) return { ...task, done: true };
   return task;
@@ -2319,7 +2320,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
         style={{ height: "100dvh", maxHeight: 900, backgroundColor: "#0B0B10", boxShadow: "0 0 100px rgba(0,0,0,.9)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
-          {screen === "home"   && <TodayView {...sharedProps} todayTab={todayTab} setTodayTab={setTodayTab} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
+          {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
           {screen === "workout" && <WorkoutScreen calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
           {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
 
