@@ -2,82 +2,96 @@
 
 :root {
   --font-size: 15px;
-  --background: #0b0b10;
-  --foreground: #eeeef8;
-  --card: #13131a;
-  --card-foreground: #eeeef8;
-  --popover: #1c1c28;
-  --popover-foreground: #eeeef8;
-  --primary: #6366f1;
+  --background: #0B0F17;
+  --foreground: #e6e7f0;
+  --card: rgba(15, 19, 31, 0.45);
+  --card-foreground: #e6e7f0;
+  --popover: rgba(15, 19, 31, 0.7);
+  --popover-foreground: #e6e7f0;
+  --primary: #6366F1;
   --primary-foreground: #ffffff;
   --secondary: #1e1e2c;
-  --secondary-foreground: #eeeef8;
+  --secondary-foreground: #e6e7f0;
   --muted: #1a1a26;
   --muted-foreground: #7878a4;
-  --accent: #6366f1;
+  --accent: #6366F1;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.07);
   --input: rgba(255, 255, 255, 0.06);
-  --input-background: rgba(255, 255, 255, 0.06);
+  --input-background: rgba(255, 255, 255, 0.05);
   --switch-background: #2a2a3c;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
+  --ring: #6366F1;
+  --chart-1: #6366F1;
   --chart-2: #34d399;
   --chart-3: #f472b6;
   --chart-4: #fb923c;
   --chart-5: #38bdf8;
   --radius: 0.875rem;
   --sidebar: #0f0f17;
-  --sidebar-foreground: #eeeef8;
-  --sidebar-primary: #6366f1;
+  --sidebar-foreground: #e6e7f0;
+  --sidebar-primary: #6366F1;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1a1a26;
-  --sidebar-accent-foreground: #eeeef8;
+  --sidebar-accent-foreground: #e6e7f0;
   --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #6366f1;
+  --sidebar-ring: #6366F1;
+
+  /* Entity palette */
+  --color-event: #6366F1;
+  --color-task: #10B981;
+  --color-goal: #8B5CF6;
+  --color-workout: #F43F5E;
+  --color-meal: #F59E0B;
 }
 
 .dark {
-  --background: #0b0b10;
-  --foreground: #eeeef8;
-  --card: #13131a;
-  --card-foreground: #eeeef8;
-  --popover: #1c1c28;
-  --popover-foreground: #eeeef8;
-  --primary: #6366f1;
+  --background: #0B0F17;
+  --foreground: #e6e7f0;
+  --card: rgba(15, 19, 31, 0.45);
+  --card-foreground: #e6e7f0;
+  --popover: rgba(15, 19, 31, 0.7);
+  --popover-foreground: #e6e7f0;
+  --primary: #6366F1;
   --primary-foreground: #ffffff;
   --secondary: #1e1e2c;
-  --secondary-foreground: #eeeef8;
+  --secondary-foreground: #e6e7f0;
   --muted: #1a1a26;
   --muted-foreground: #7878a4;
-  --accent: #6366f1;
+  --accent: #6366F1;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.07);
   --input: rgba(255, 255, 255, 0.06);
-  --input-background: rgba(255, 255, 255, 0.06);
+  --input-background: rgba(255, 255, 255, 0.05);
   --switch-background: #2a2a3c;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
+  --ring: #6366F1;
+  --chart-1: #6366F1;
   --chart-2: #34d399;
   --chart-3: #f472b6;
   --chart-4: #fb923c;
   --chart-5: #38bdf8;
   --sidebar: #0f0f17;
-  --sidebar-foreground: #eeeef8;
-  --sidebar-primary: #6366f1;
+  --sidebar-foreground: #e6e7f0;
+  --sidebar-primary: #6366F1;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1a1a26;
-  --sidebar-accent-foreground: #eeeef8;
+  --sidebar-accent-foreground: #e6e7f0;
   --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #6366f1;
+  --sidebar-ring: #6366F1;
+
+  /* Entity palette */
+  --color-event: #6366F1;
+  --color-task: #10B981;
+  --color-goal: #8B5CF6;
+  --color-workout: #F43F5E;
+  --color-meal: #F59E0B;
 }
 
 @theme inline {
@@ -170,11 +184,114 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
+    @apply transition-all duration-200 active:scale-95;
   }
 
   input {
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card base */
+  .glass-card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.03];
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-panel {
+    @apply border border-white/10 bg-white/[0.02];
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Frosted glass header */
+  .glass-header {
+    @apply border-b border-white/10 bg-[#0B0F17]/80 backdrop-blur-md;
+  }
+
+  /* Sticky frosted header */
+  .sticky-header {
+    @apply sticky top-0 z-20 border-b border-white/10 bg-[#0B0F17]/80 backdrop-blur-md;
+  }
+
+  /* Glass modal shell */
+  .glass-modal {
+    @apply rounded-3xl border border-white/10 bg-[#0B0F17]/90;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Micro-interaction button base */
+  .btn-micro {
+    @apply transition-all duration-200 active:scale-95;
+  }
+
+  /* Entity color text utilities */
+  .text-event { color: var(--color-event); }
+  .text-task { color: var(--color-task); }
+  .text-goal { color: var(--color-goal); }
+  .text-workout { color: var(--color-workout); }
+  .text-meal { color: var(--color-meal); }
+
+  /* Entity color background tints (10% opacity) */
+  .bg-event-10 { background-color: rgba(99, 102, 241, 0.1); }
+  .bg-task-10 { background-color: rgba(16, 185, 129, 0.1); }
+  .bg-goal-10 { background-color: rgba(139, 92, 246, 0.1); }
+  .bg-workout-10 { background-color: rgba(244, 63, 94, 0.1); }
+  .bg-meal-10 { background-color: rgba(245, 158, 11, 0.1); }
+
+  /* Card hover highlight */
+  .card-hover {
+    @apply transition-all duration-200 hover:border-white/20 hover:bg-white/[0.04];
+  }
+
+  /* Entity type pill badges */
+  .pill-event {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+    background: rgba(99, 102, 241, 0.15);
+    color: #818CF8;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  .pill-task {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .pill-goal {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+    background: rgba(139, 92, 246, 0.15);
+    color: #A885F7;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+  }
+
+  .pill-workout {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+    background: rgba(244, 63, 94, 0.15);
+    color: #F87171;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+  }
+
+  .pill-meal {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full;
+    background: rgba(245, 158, 11, 0.15);
+    color: #FBBF24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  /* Metadata styling */
+  .meta-text {
+    @apply text-xs text-slate-400 font-medium;
+  }
+
+  /* Heading styling */
+  .heading-tight {
+    @apply tracking-tight font-bold;
   }
 }

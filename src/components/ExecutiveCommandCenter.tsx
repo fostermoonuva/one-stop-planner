@@ -169,7 +169,7 @@ export default function ExecutiveCommandCenter({
     ...workoutsOnDay.map(w => ({
       id: w.id, title: w.name,
       startMin: t2m(w.startTime), endMin: t2m(w.endTime) || t2m(w.startTime) + 60,
-      type: "workout" as const, color: "#34D399", done: false,
+      type: "workout" as const, color: "#F43F5E", done: false,
     })),
     ...timedTasks.filter(t => !t.done).map(t => ({
       id: t.id, title: t.title,
@@ -274,7 +274,7 @@ export default function ExecutiveCommandCenter({
       <div className="px-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-4 px-1">
           <ProgressRing pct={tasksPct} color="#6366F1" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
-          <ProgressRing pct={goalsPct} color="#34D399" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
+          <ProgressRing pct={goalsPct} color="#8B5CF6" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
           <ProgressRing pct={eventsPct} color="#F97316" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
         </div>
       </div>
@@ -331,8 +331,8 @@ export default function ExecutiveCommandCenter({
               </p>
               {(remainingTasks.length === 0 && remainingEvents.length === 0 && remainingWorkouts.length === 0 && remainingGoals.length === 0) ? (
                 <div className="mt-3 flex flex-col items-center justify-center h-20 gap-2">
-                  <Check size={20} style={{ color: "#34D399" }} />
-                  <p style={{ fontSize: 12, color: "#34D399", fontWeight: 600 }}>All caught up!</p>
+                  <Check size={20} style={{ color: "#F43F5E" }} />
+                  <p style={{ fontSize: 12, color: "#F43F5E", fontWeight: 600 }}>All caught up!</p>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2">
@@ -391,7 +391,7 @@ export default function ExecutiveCommandCenter({
                     <div key={w.id} onClick={() => onDetail("workout", w.id)}
                       className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
                       style={{ ...cardSty, cursor: "pointer" }}>
-                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#34D399" }} />
+                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#F43F5E" }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium" style={{ color: "#EEEEF8" }}>{w.name}</p>
                         <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>
@@ -430,7 +430,7 @@ export default function ExecutiveCommandCenter({
               {[
                 { label: "Task",   icon: Check,    m: "task" as ModalKind,        c: "#6366F1" },
                 { label: "Event",  icon: Calendar, m: "event" as ModalKind,       c: "#38BDF8" },
-                { label: "Workout",icon: Dumbbell,  m: "startWorkout" as ModalKind,c: "#34D399" },
+                { label: "Workout",icon: Dumbbell,  m: "startWorkout" as ModalKind,c: "#F43F5E" },
                 { label: "Meal",   icon: Utensils,  m: "meal" as ModalKind,        c: "#FB923C" },
               ].map(o => (
                 <button
@@ -461,22 +461,22 @@ export default function ExecutiveCommandCenter({
               <div className="mt-3">
                 {activeWorkout ? (
                   <div className="rounded-xl p-3 flex items-center gap-3"
-                    style={{ backgroundColor: "rgba(52,211,153,.1)", outline: "1px solid rgba(52,211,153,.25)" }}>
+                    style={{ backgroundColor: "rgba(244,63,94,.1)", outline: "1px solid rgba(244,63,94,.25)" }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "rgba(52,211,153,.2)" }}>
-                      <Dumbbell size={14} style={{ color: "#34D399" }} />
+                      style={{ backgroundColor: "rgba(244,63,94,.2)" }}>
+                      <Dumbbell size={14} style={{ color: "#F43F5E" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-sm truncate">{activeWorkout.name}</p>
-                      <p style={{ fontSize: 10, color: "#34D399" }}>In progress · {activeWorkout.exercises.length} exercises</p>
+                      <p style={{ fontSize: 10, color: "#F43F5E" }}>In progress · {activeWorkout.exercises.length} exercises</p>
                     </div>
-                    <Play size={12} style={{ color: "#34D399" }} />
+                    <Play size={12} style={{ color: "#F43F5E" }} />
                   </div>
                 ) : todaysWorkout && !activeWorkout && (
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(52,211,153,.08)" }}>
+                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(244,63,94,.08)" }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "rgba(52,211,153,.15)" }}>
-                      <Dumbbell size={14} style={{ color: "#34D399" }} />
+                      style={{ backgroundColor: "rgba(244,63,94,.15)" }}>
+                      <Dumbbell size={14} style={{ color: "#F43F5E" }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-sm truncate">
@@ -491,8 +491,8 @@ export default function ExecutiveCommandCenter({
                   </div>
                 )}
                 {!activeWorkout && workoutsOnDay.length === 0 && (
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(52,211,153,.05)" }}>
-                    <Dumbbell size={14} style={{ color: "#34D399" }} />
+                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(244,63,94,.05)" }}>
+                    <Dumbbell size={14} style={{ color: "#F43F5E" }} />
                     <span style={{ fontSize: 12, color: "#4E4E72" }}>No workout logged for today</span>
                   </div>
                 )}

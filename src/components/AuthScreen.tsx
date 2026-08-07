@@ -49,7 +49,7 @@ export function AuthScreen({
     >
       <div
         className="w-full max-w-sm rounded-3xl p-6 space-y-5"
-        style={{ backgroundColor: "#0B0B10", boxShadow: "0 0 80px rgba(0,0,0,.85)" }}
+        style={{ backgroundColor: "#0B0F17", boxShadow: "0 0 80px rgba(0,0,0,.85)" }}
       >
         <div className="flex flex-col items-center gap-2 text-center">
           <div

@@ -49,16 +49,28 @@ export const DS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 export const DF = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 export const MF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 export const TL_START = 0 * 60, TL_END = 24 * 60, TL_H = TL_END - TL_START;
-export const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#34D399","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
+export const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#F43F5E","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
 export const DEFAULT_GROUPS: Group[] = [
   { id:"g1", name:"School",   color:"#818CF8" },
   { id:"g2", name:"Work",     color:"#38BDF8" },
   { id:"g3", name:"Personal", color:"#C084FC" },
-  { id:"g4", name:"Fitness",  color:"#34D399" },
+  { id:"g4", name:"Fitness",  color:"#F43F5E" },
   { id:"g5", name:"Food",     color:"#FB923C" },
   { id:"g6", name:"Wellness", color:"#F472B6" },
 ];
+
+// ─── Entity Palette ─────────────────────────────────────────────────────────────
+export const ENTITY_COLORS = {
+  event:   "#6366F1", // Electric Indigo
+  task:    "#10B981", // Emerald Green
+  goal:    "#8B5CF6", // Radiant Violet
+  workout: "#F43F5E", // Sunset Rose
+  meal:    "#F59E0B", // Warm Amber
+} as const;
+export type EntityType = keyof typeof ENTITY_COLORS;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 export const todayDate  = () => { const n = new Date(); n.setHours(0,0,0,0); return n; };
 export const dKey    = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 export const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(d.getDate() + n); return r; };
@@ -113,10 +125,10 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-export const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none";
+export const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none border border-white/10 transition-all duration-200";
 export const inputSty = { backgroundColor: "rgba(255,255,255,.07)", caretColor: "#6366F1" } as React.CSSProperties;
 export const labelSty = { color: "#4E4E72", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const };
-export const cardSty  = { backgroundColor: "rgba(255,255,255,.05)" } as React.CSSProperties;
+export const cardSty  = { backgroundColor: "rgba(255,255,255,.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" } as React.CSSProperties;
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -297,7 +309,7 @@ function TaskSubtaskSection({ task, accentColor, onUpdate }: {
 function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.72)", backdropFilter: "blur(10px)" }} onClick={onClose}>
-      <div className="w-full rounded-t-3xl" style={{ backgroundColor: "#181824" }} onClick={e => e.stopPropagation()}>
+      <div className="w-full rounded-t-3xl glass-modal" onClick={e => e.stopPropagation()}>
         <div className="flex justify-center pt-3">
           <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.14)" }} />
         </div>
@@ -402,7 +414,7 @@ function WorkoutElapsed({ startedAt }: { startedAt: string }) {
   const [, tick] = useState(0);
   useEffect(() => { const id = setInterval(() => tick(t => t + 1), 1000); return () => clearInterval(id); }, []);
   const secs = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-  return <span className="text-sm font-mono font-bold" style={{ color: "#34D399" }}>{fmtT(Math.max(0, secs))}</span>;
+  return <span className="text-sm font-mono font-bold" style={{ color: "#F43F5E" }}>{fmtT(Math.max(0, secs))}</span>;
 }
 
 // ─── Workout Screen ───────────────────────────────────────────────────────────
@@ -429,7 +441,7 @@ function WorkoutScreen({
         </div>
         <button onClick={() => onModal("startWorkout")}
           className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm"
-          style={{ background: "linear-gradient(135deg,#34D399,#10B981)", color: "#fff" }}>
+          style={{ background: "linear-gradient(135deg,#F43F5E,#f97316)", color: "#fff" }}>
           <Play size={13} fill="currentColor" /> Start
         </button>
       </div>
@@ -438,16 +450,16 @@ function WorkoutScreen({
         {/* Active workout banner */}
         {activeWorkout && (
           <button onClick={onResumeWorkout} className="w-full rounded-2xl p-4 text-left"
-            style={{ backgroundColor: "rgba(52,211,153,.1)", outline: "1.5px solid rgba(52,211,153,.3)" }}>
+            style={{ backgroundColor: "rgba(244,63,94,.1)", outline: "1.5px solid rgba(244,63,94,.3)" }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: "rgba(52,211,153,.2)" }}>
-                <Dumbbell size={18} style={{ color: "#34D399" }} />
+                style={{ backgroundColor: "rgba(244,63,94,.2)" }}>
+                <Dumbbell size={18} style={{ color: "#F43F5E" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p style={{ fontSize: 9, fontWeight: 700, color: "#34D399", letterSpacing: "0.08em", textTransform: "uppercase" }}>In Progress</p>
+                <p style={{ fontSize: 9, fontWeight: 700, color: "#F43F5E", letterSpacing: "0.08em", textTransform: "uppercase" }}>In Progress</p>
                 <p className="text-white font-bold text-sm truncate">{activeWorkout.name}</p>
-                <p style={{ fontSize: 10, color: "rgba(52,211,153,.7)" }}>{activeWorkout.exercises.length} exercises · tap to resume</p>
+                <p style={{ fontSize: 10, color: "rgba(244,63,94,.7)" }}>{activeWorkout.exercises.length} exercises · tap to resume</p>
               </div>
               <WorkoutElapsed startedAt={activeWorkout.startedAt} />
             </div>
@@ -458,8 +470,8 @@ function WorkoutScreen({
         {sorted.length === 0 && !activeWorkout && (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <div className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(52,211,153,.08)", outline: "1px solid rgba(52,211,153,.15)" }}>
-              <Dumbbell size={32} style={{ color: "rgba(52,211,153,.4)" }} />
+              style={{ backgroundColor: "rgba(244,63,94,.08)", outline: "1px solid rgba(244,63,94,.15)" }}>
+              <Dumbbell size={32} style={{ color: "rgba(244,63,94,.4)" }} />
             </div>
             <div className="text-center">
               <p className="text-white font-semibold text-sm">No workouts yet</p>
@@ -467,7 +479,7 @@ function WorkoutScreen({
             </div>
             <button onClick={() => onModal("startWorkout")}
               className="px-8 py-3 rounded-full font-bold text-sm"
-              style={{ background: "linear-gradient(135deg,#34D399,#10B981)", color: "#fff" }}>
+              style={{ background: "linear-gradient(135deg,#F43F5E,#f97316)", color: "#fff" }}>
               Start First Workout
             </button>
           </div>
@@ -490,15 +502,15 @@ function WorkoutScreen({
                   <p className="text-white font-bold text-sm truncate">{w.name}</p>
                   <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>{label} · {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}</p>
                 </div>
-                <div className="rounded-xl px-2.5 py-1 ml-2 flex-shrink-0" style={{ backgroundColor: "rgba(52,211,153,.12)" }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#34D399" }}>{dur}m</p>
+                <div className="rounded-xl px-2.5 py-1 ml-2 flex-shrink-0" style={{ backgroundColor: "rgba(244,63,94,.12)" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "#F43F5E" }}>{dur}m</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
                   { l: "Exercises", v: w.exercises.length, c: "#818CF8" },
                   { l: "Sets Done",  v: `${doneSets}/${totalSets}`, c: "#38BDF8" },
-                  { l: "Volume",     v: `${volume}lb`, c: "#34D399" },
+                  { l: "Volume",     v: `${volume}lb`, c: "#F43F5E" },
                 ].map(s => (
                   <div key={s.l} className="rounded-xl py-2 text-center" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
                     <p style={{ color: s.c, fontWeight: 700, fontSize: 12 }}>{s.v}</p>
@@ -889,16 +901,16 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
   const totalSets = activeWorkout.exercises.reduce((a, e) => a + e.sets.length, 0);
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0B0B10" }}>
+    <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0B0F17" }}>
       <div className="px-5 pt-10 pb-3 flex-shrink-0">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#34D399", letterSpacing: "0.1em", textTransform: "uppercase" }}>Active Workout</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#F43F5E", letterSpacing: "0.1em", textTransform: "uppercase" }}>Active Workout</p>
             <h1 className="text-white font-bold leading-tight" style={{ fontSize: 18 }}>{activeWorkout.name}</h1>
           </div>
-          <div className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: "rgba(52,211,153,.12)" }}>
-            <p className="font-mono font-bold leading-none" style={{ color: "#34D399", fontSize: 20 }}>{fmtT(Math.max(0, elapsed))}</p>
-            <p style={{ fontSize: 9, color: "rgba(52,211,153,.5)", fontWeight: 600, marginTop: 2 }}>elapsed</p>
+          <div className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: "rgba(244,63,94,.12)" }}>
+            <p className="font-mono font-bold leading-none" style={{ color: "#F43F5E", fontSize: 20 }}>{fmtT(Math.max(0, elapsed))}</p>
+            <p style={{ fontSize: 9, color: "rgba(244,63,94,.5)", fontWeight: 600, marginTop: 2 }}>elapsed</p>
           </div>
         </div>
         {totalSets > 0 && (
@@ -906,7 +918,7 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
             {[
               { l: "Sets", v: `${doneSets}/${totalSets}`, c: "#818CF8" },
               { l: "Exercises", v: `${activeWorkout.exercises.length}`, c: "#38BDF8" },
-              { l: "Volume", v: `${activeWorkout.exercises.reduce((a, e) => a + e.sets.filter(s=>s.done).reduce((b,s)=>b+s.wt*s.reps,0),0)} lb`, c: "#34D399" },
+              { l: "Volume", v: `${activeWorkout.exercises.reduce((a, e) => a + e.sets.filter(s=>s.done).reduce((b,s)=>b+s.wt*s.reps,0),0)} lb`, c: "#F43F5E" },
             ].map(s => (
               <div key={s.l} className="rounded-xl py-2 text-center" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
                 <p style={{ color: s.c, fontWeight: 700, fontSize: 13 }}>{s.v}</p>
@@ -938,8 +950,8 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
             <div className="space-y-1.5">
               {ex.sets.map((s, si) => (
                 <div key={si} className="grid grid-cols-4 gap-2 items-center py-2 px-1 rounded-xl"
-                  style={{ backgroundColor: s.done ? "rgba(52,211,153,.1)" : "rgba(255,255,255,.03)" }}>
-                  <p style={{ color: s.done ? "#34D399" : "#5A5A80", fontWeight: 700, fontSize: 13, textAlign: "center" }}>{si + 1}</p>
+                  style={{ backgroundColor: s.done ? "rgba(244,63,94,.1)" : "rgba(255,255,255,.03)" }}>
+                  <p style={{ color: s.done ? "#F43F5E" : "#5A5A80", fontWeight: 700, fontSize: 13, textAlign: "center" }}>{si + 1}</p>
                   <input type="number" value={s.wt || ""} onChange={e => updateSet(ex.id, si, "wt", Number(e.target.value))}
                     className="text-white font-bold text-sm text-center rounded-lg py-1 outline-none"
                     style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
@@ -948,7 +960,7 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
                     style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
                   <button onClick={() => toggleSet(ex.id, si)}
                     className="w-7 h-7 rounded-full flex items-center justify-center mx-auto"
-                    style={{ backgroundColor: s.done ? "#34D399" : "rgba(255,255,255,.08)" }}>
+                    style={{ backgroundColor: s.done ? "#F43F5E" : "rgba(255,255,255,.08)" }}>
                     {s.done ? <Check size={12} className="text-white" /> : <span style={{ width: 8, height: 8, borderRadius: 99, border: "1.5px solid #3A3A5E", display: "block" }} />}
                   </button>
                 </div>
@@ -983,10 +995,10 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
         )}
       </div>
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-3 space-y-2"
-        style={{ background: "linear-gradient(to top, #0B0B10 60%, transparent)" }}>
+        style={{ background: "linear-gradient(to top, #0B0F17 60%, transparent)" }}>
         <button onClick={onComplete}
           className="w-full py-4 rounded-2xl text-white font-bold text-base"
-          style={{ backgroundColor: "#34D399" }}>
+          style={{ backgroundColor: "#F43F5E" }}>
           Finish Workout
         </button>
         {confirmCancel ? (
@@ -1204,7 +1216,7 @@ function StartWorkoutModal({ onStart, onClose }: { onStart: (name: string) => vo
         onKeyDown={e => { if (e.key === "Enter" && name.trim()) { onStart(name.trim()); onClose(); } }} />
       <button onClick={() => { if (name.trim()) { onStart(name.trim()); onClose(); } }}
         className="w-full py-4 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2"
-        style={{ backgroundColor: name.trim() ? "#34D399" : "rgba(52,211,153,.3)", color: name.trim() ? "#fff" : "#34D399" }}>
+        style={{ backgroundColor: name.trim() ? "#F43F5E" : "rgba(244,63,94,.3)", color: name.trim() ? "#fff" : "#F43F5E" }}>
         <Play size={18} fill="currentColor" /> Start Workout
       </button>
     </ModalShell>
@@ -1464,13 +1476,13 @@ function DetailModal({
   };
 
   const title = event?.title ?? task?.title ?? goal?.title ?? meal?.name ?? workout?.name ?? "";
-  const color = event ? gColor(groups, event.groupId) : task ? gColor(groups, task.groupId) : goal ? gColor(groups, goal.groupId) : meal ? "#FB923C" : "#34D399";
+  const color = event ? gColor(groups, event.groupId) : task ? gColor(groups, task.groupId) : goal ? gColor(groups, goal.groupId) : meal ? "#FB923C" : "#F43F5E";
   const kindLabel = kind === "event" ? "Event" : kind === "task" ? "Task" : kind === "goal" ? "Goal" : kind === "meal" ? "Meal" : "Workout";
 
   return (
     <div className="absolute inset-0 z-50 flex items-end"
       style={{ backgroundColor: "rgba(0,0,0,.72)", backdropFilter: "blur(10px)" }} onClick={onClose}>
-      <div className="w-full rounded-t-3xl" style={{ backgroundColor: "#181824" }} onClick={e => e.stopPropagation()}>
+      <div className="w-full rounded-t-3xl glass-modal" onClick={e => e.stopPropagation()}>
         <div className="flex justify-center pt-3">
           <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.14)" }} />
         </div>
@@ -1644,7 +1656,7 @@ function AddMenu({ onSelect, onClose }: { onSelect: (m: ModalKind) => void; onCl
     { icon: Calendar, label: "Event",   m: "event",        c: "#38BDF8" },
     { icon: Check,    label: "Task",    m: "task",         c: "#818CF8" },
     { icon: Utensils, label: "Meal",    m: "meal",         c: "#FB923C" },
-    { icon: Dumbbell, label: "Workout", m: "startWorkout", c: "#34D399" },
+    { icon: Dumbbell, label: "Workout", m: "startWorkout", c: "#F43F5E" },
     { icon: Target,   label: "Goal",    m: "goal",         c: "#F472B6" },
   ];
   return (
@@ -1683,7 +1695,7 @@ function BottomNav({ screen, onChange }: { screen: Screen; onChange: (s: Screen)
   ];
   return (
     <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3"
-      style={{ background: "linear-gradient(to top, #0B0B10 65%, transparent)" }}>
+      style={{ background: "linear-gradient(to top, #0B0F17 65%, transparent)" }}>
       <div className="flex items-center justify-around rounded-2xl px-1 py-1.5"
         style={{ backgroundColor: "rgba(255,255,255,.07)" }}>
         {items.map(item => {
@@ -1877,9 +1889,9 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#05050A", fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0B0F17", fontFamily: "'Inter', sans-serif" }}>
       <div className="relative w-full max-w-sm overflow-hidden"
-        style={{ height: "100dvh", maxHeight: 900, backgroundColor: "#0B0B10", boxShadow: "0 0 100px rgba(0,0,0,.9)" }}>
+        style={{ height: "100dvh", maxHeight: 900, backgroundColor: "#0B0F17", boxShadow: "0 0 100px rgba(0,0,0,.9)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
           {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
@@ -1911,7 +1923,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
                   });
                   workoutsOnDay.forEach(w => {
                     const sM = t2m(w.startTime), eM = t2m(w.endTime) || sM + 60;
-                    items.push({ id: w.id, title: w.name, startMin: sM, endMin: Math.max(eM, sM + 30), type: "workout", color: "#34D399", subtitle: `${w.exercises.length} exercise${w.exercises.length !== 1 ? "s" : ""}` });
+                    items.push({ id: w.id, title: w.name, startMin: sM, endMin: Math.max(eM, sM + 30), type: "workout", color: "#F43F5E", subtitle: `${w.exercises.length} exercise${w.exercises.length !== 1 ? "s" : ""}` });
                   });
 
                   return (
