@@ -12,7 +12,6 @@ import {
   eventApplies, taskApplies, goalApplies,
   gColor, gName, subtaskStats,
   DS, DF, MF,
-  cardSty,
 } from "../app/App";
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
@@ -46,7 +45,8 @@ function ProgressRing({ pct, color, label, subtitle }: {
       <svg viewBox="0 0 36 36" style={{ width: 56, height: 56 }}>
         <path
           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="3.5"
+          fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="3.5"
+          className="dark:stroke-white/10"
         />
         <path
           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -54,10 +54,10 @@ function ProgressRing({ pct, color, label, subtitle }: {
           strokeDasharray={`${pct},100`} strokeLinecap="round"
         />
         <text x="18" y="20.5" fontSize="7" textAnchor="middle"
-          fill="#fff" fontWeight={700}>{pct}%</text>
+          className="dark:fill-stone-100" fill="#1C1917" fontWeight={700}>{pct}%</text>
       </svg>
-      <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6, fontWeight: 700 }}>{label}</p>
-      <p style={{ fontSize: 11, color: "#4E4E72", marginTop: 2 }}>{subtitle}</p>
+      <p className="dark:text-stone-400" style={{ fontSize: 11, color: "#78716C", marginTop: 6, fontWeight: 700 }}>{label}</p>
+      <p className="dark:text-stone-500" style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>{subtitle}</p>
     </div>
   );
 }
@@ -92,10 +92,10 @@ function MacroBar({ label, value, target, color }: {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span style={{ fontSize: 10, color: "#4E4E72", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 700 }}>{value}{target > 0 ? ` / ${target}` : ""}</span>
+        <span className="dark:text-stone-400" style={{ fontSize: 10, color: "#78716C", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+        <span className="dark:text-stone-300" style={{ fontSize: 11, color: "#78716C", fontWeight: 700 }}>{value}{target > 0 ? ` / ${target}` : ""}</span>
       </div>
-      <div className="h-2 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+      <div className="h-2 rounded-full dark:bg-white/10" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color, minWidth: 2 }} />
       </div>
     </div>
@@ -169,7 +169,7 @@ export default function ExecutiveCommandCenter({
     ...workoutsOnDay.map(w => ({
       id: w.id, title: w.name,
       startMin: t2m(w.startTime), endMin: t2m(w.endTime) || t2m(w.startTime) + 60,
-      type: "workout" as const, color: "#F43F5E", done: false,
+      type: "workout" as const, color: "#F97316", done: false,
     })),
     ...timedTasks.filter(t => !t.done).map(t => ({
       id: t.id, title: t.title,
@@ -226,29 +226,29 @@ export default function ExecutiveCommandCenter({
       <div className="px-5 pt-10 pb-2 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-            <ChevronLeft size={15} style={{ color: "#7878A4" }} />
+            className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
+            style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+            <ChevronLeft size={15} className="dark:text-stone-400" style={{ color: "#78716C" }} />
           </button>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>
+            <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
               {DF[selectedDate.getDay()]}
             </p>
-            <h1 className="text-white font-bold leading-none" style={{ fontSize: 20 }}>
+            <h1 className="text-stone-900 dark:text-stone-100 font-bold leading-none" style={{ fontSize: 20 }}>
               {MF[selectedDate.getMonth()]} {selectedDate.getDate()}
             </h1>
           </div>
           <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-            <ChevronRight size={15} style={{ color: "#7878A4" }} />
+            className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
+            style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+            <ChevronRight size={15} className="dark:text-stone-400" style={{ color: "#78716C" }} />
           </button>
         </div>
         <div className="flex items-center gap-2">
           {!isToday(selectedDate) && (
             <button onClick={() => setSelectedDate(todayDate())}
-              className="px-3 py-1.5 rounded-full text-xs font-bold"
-              style={{ backgroundColor: "rgba(99,102,241,.2)", color: "#818CF8" }}>
+              className="px-3 py-1.5 rounded-full text-xs font-bold dark:bg-indigo-500/20"
+              style={{ backgroundColor: "rgba(99,102,241,.15)", color: "#6366F1" }}>
               Today
             </button>
           )}
@@ -265,7 +265,7 @@ export default function ExecutiveCommandCenter({
 
       {/* Greeting */}
       <div className="px-5 pb-1 flex-shrink-0">
-        <p className="text-white font-bold" style={{ fontSize: 18 }}>
+        <p className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 18 }}>
           {greeting}, {username}
         </p>
       </div>
@@ -273,8 +273,8 @@ export default function ExecutiveCommandCenter({
       {/* ── Metric Rings ── */}
       <div className="px-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-4 px-1">
-          <ProgressRing pct={tasksPct} color="#6366F1" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
-          <ProgressRing pct={goalsPct} color="#8B5CF6" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
+          <ProgressRing pct={tasksPct} color="#10B981" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
+          <ProgressRing pct={goalsPct} color="#6366F1" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
           <ProgressRing pct={eventsPct} color="#F97316" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
         </div>
       </div>
@@ -287,8 +287,8 @@ export default function ExecutiveCommandCenter({
           <div className="lg:col-span-3 space-y-4">
 
             {/* Up Next Card */}
-            <div className="rounded-2xl p-4" style={cardSty}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>
+            <div className="rounded-2xl p-4 glass-card-interactive">
+              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
                 Up Next
               </p>
               {nextItem ? (
@@ -304,8 +304,8 @@ export default function ExecutiveCommandCenter({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-sm truncate">{nextItem.title}</p>
-                    <p style={{ fontSize: 11, color: "#4E4E72", marginTop: 2 }}>
+                    <p className="text-stone-900 font-semibold text-sm truncate">{nextItem.title}</p>
+                    <p style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>
                       {m2d(nextItem.startMin)} – {m2d(nextItem.endMin)} · {nextItem.type}
                     </p>
                   </div>
@@ -318,29 +318,29 @@ export default function ExecutiveCommandCenter({
                 </div>
               ) : (
                 <div className="mt-3 flex flex-col items-center justify-center h-24 gap-2">
-                  <Calendar size={24} style={{ color: "#2A2A45" }} />
-                  <p style={{ fontSize: 12, color: "#3A3A5A" }}>Nothing coming up next</p>
+                  <Calendar size={24} style={{ color: "#78716C" }} />
+                  <p style={{ fontSize: 12, color: "#78716C" }}>Nothing coming up next</p>
                 </div>
               )}
             </div>
 
             {/* Today's Highlights */}
-            <div className="rounded-2xl p-4" style={cardSty}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>
+            <div className="rounded-2xl p-4 glass-card">
+              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
                 Today's Highlights
               </p>
               {(remainingTasks.length === 0 && remainingEvents.length === 0 && remainingWorkouts.length === 0 && remainingGoals.length === 0) ? (
                 <div className="mt-3 flex flex-col items-center justify-center h-20 gap-2">
-                  <Check size={20} style={{ color: "#F43F5E" }} />
-                  <p style={{ fontSize: 12, color: "#F43F5E", fontWeight: 600 }}>All caught up!</p>
+                  <Check size={20} style={{ color: "#10B981" }} />
+                  <p style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>All caught up!</p>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2">
                   {/* Remaining tasks */}
                   {remainingTasks.map(t => (
                     <div key={t.id} onClick={() => onDetail("task", t.id)}
-                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
-                      style={{ ...cardSty, cursor: "pointer" }}>
+                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left glass-card-interactive"
+                      style={{ cursor: "pointer" }}>
                       <button
                         onClick={e => { e.stopPropagation(); toggleTask(t.id); }}
                         className="w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0"
@@ -351,8 +351,8 @@ export default function ExecutiveCommandCenter({
                         {t.done && <Check size={10} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium"
-                          style={{ color: "#EEEEF8" }}>{t.title}</p>
+                        <p className="text-sm font-medium text-stone-900"
+                          style={{ textDecoration: t.done ? "line-through" : "none" }}>{t.title}</p>
                       </div>
                       <SubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
                       {t.groupId && (
@@ -367,13 +367,13 @@ export default function ExecutiveCommandCenter({
                   {/* Remaining events */}
                   {remainingEvents.map(e => (
                     <div key={e.id} onClick={() => onDetail("event", e.id)}
-                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
-                      style={{ ...cardSty, cursor: "pointer" }}>
+                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left glass-card-interactive"
+                      style={{ cursor: "pointer" }}>
                       <div className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: gColor(groups, e.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium" style={{ color: "#EEEEF8" }}>{e.title}</p>
-                        <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900">{e.title}</p>
+                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
                           {m2d(t2m(e.startTime))} – {m2d(t2m(e.endTime))}
                         </p>
                       </div>
@@ -389,12 +389,12 @@ export default function ExecutiveCommandCenter({
                   {/* Remaining workouts */}
                   {remainingWorkouts.map(w => (
                     <div key={w.id} onClick={() => onDetail("workout", w.id)}
-                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
-                      style={{ ...cardSty, cursor: "pointer" }}>
-                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#F43F5E" }} />
+                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left glass-card-interactive"
+                      style={{ cursor: "pointer" }}>
+                      <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#F97316" }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium" style={{ color: "#EEEEF8" }}>{w.name}</p>
-                        <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900">{w.name}</p>
+                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
                           {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}
                         </p>
                       </div>
@@ -404,12 +404,12 @@ export default function ExecutiveCommandCenter({
                   {/* Remaining goals */}
                   {remainingGoals.map(g => (
                     <div key={g.id} onClick={() => onDetail("goal", g.id)}
-                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left"
-                      style={{ ...cardSty, cursor: "pointer" }}>
+                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left glass-card-interactive"
+                      style={{ cursor: "pointer" }}>
                       <Target size={14} style={{ color: gColor(groups, g.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium" style={{ color: "#EEEEF8" }}>{g.title}</p>
-                        <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900">{g.title}</p>
+                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
                           {g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}
                         </p>
                       </div>
@@ -428,21 +428,20 @@ export default function ExecutiveCommandCenter({
             {/* Quick Action Bar */}
             <div className="grid grid-cols-4 gap-2">
               {[
-                { label: "Task",   icon: Check,    m: "task" as ModalKind,        c: "#6366F1" },
-                { label: "Event",  icon: Calendar, m: "event" as ModalKind,       c: "#38BDF8" },
-                { label: "Workout",icon: Dumbbell,  m: "startWorkout" as ModalKind,c: "#F43F5E" },
-                { label: "Meal",   icon: Utensils,  m: "meal" as ModalKind,        c: "#FB923C" },
+                { label: "Task",   icon: Check,    m: "task" as ModalKind,        c: "#10B981" },
+                { label: "Event",  icon: Calendar, m: "event" as ModalKind,       c: "#3B82F6" },
+                { label: "Workout",icon: Dumbbell,  m: "startWorkout" as ModalKind,c: "#F97316" },
+                { label: "Meal",   icon: Utensils,  m: "meal" as ModalKind,        c: "#F59E0B" },
               ].map(o => (
                 <button
                   key={o.label}
                   onClick={() => onModal(o.m)}
-                  className="flex flex-col items-center gap-2 py-3.5 rounded-2xl"
-                  style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${o.c}20` }}>
+                  className="flex flex-col items-center gap-2 py-3.5 rounded-2xl dark:bg-white/5"
+                  style={{ backgroundColor: "rgba(0,0,0,.04)" }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${o.c}20` }}>
                     <o.icon size={17} style={{ color: o.c }} />
                   </div>
-                  <span className="text-white font-semibold" style={{ fontSize: 10 }}>{o.label}</span>
+                  <span className="text-stone-900 dark:text-stone-100 font-semibold" style={{ fontSize: 10 }}>{o.label}</span>
                 </button>
               ))}
             </div>
@@ -452,8 +451,8 @@ export default function ExecutiveCommandCenter({
           <div className="lg:col-span-2 space-y-4">
 
             {/* Fitness & Nutrition */}
-            <div className="rounded-2xl p-4" style={cardSty}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>
+            <div className="rounded-2xl p-4 glass-card">
+              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
                 Fitness & Nutrition
               </p>
 
@@ -461,29 +460,29 @@ export default function ExecutiveCommandCenter({
               <div className="mt-3">
                 {activeWorkout ? (
                   <div className="rounded-xl p-3 flex items-center gap-3"
-                    style={{ backgroundColor: "rgba(244,63,94,.1)", outline: "1px solid rgba(244,63,94,.25)" }}>
+                    style={{ backgroundColor: "rgba(249,115,22,.1)", outline: "1px solid rgba(249,115,22,.25)" }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "rgba(244,63,94,.2)" }}>
-                      <Dumbbell size={14} style={{ color: "#F43F5E" }} />
+                      style={{ backgroundColor: "rgba(249,115,22,.2)" }}>
+                      <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm truncate">{activeWorkout.name}</p>
-                      <p style={{ fontSize: 10, color: "#F43F5E" }}>In progress · {activeWorkout.exercises.length} exercises</p>
+                      <p className="text-stone-900 font-semibold text-sm truncate">{activeWorkout.name}</p>
+                      <p style={{ fontSize: 10, color: "#F97316" }}>In progress · {activeWorkout.exercises.length} exercises</p>
                     </div>
-                    <Play size={12} style={{ color: "#F43F5E" }} />
+                    <Play size={12} style={{ color: "#F97316" }} />
                   </div>
                 ) : todaysWorkout && !activeWorkout && (
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(244,63,94,.08)" }}>
+                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(249,115,22,.08)" }}>
                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: "rgba(244,63,94,.15)" }}>
-                      <Dumbbell size={14} style={{ color: "#F43F5E" }} />
+                      style={{ backgroundColor: "rgba(249,115,22,.15)" }}>
+                      <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold text-sm truncate">
+                      <p className="text-stone-900 font-semibold text-sm truncate">
                         {workoutsOnDay.length > 0 ? workoutsOnDay[0].name : "No workout today"}
                       </p>
                       {workoutsOnDay.length > 0 && (
-                        <p style={{ fontSize: 10, color: "#4E4E72" }}>
+                        <p style={{ fontSize: 10, color: "#78716C" }}>
                           {m2d(t2m(workoutsOnDay[0].startTime))} – {m2d(t2m(workoutsOnDay[0].endTime))}
                         </p>
                       )}
@@ -491,31 +490,31 @@ export default function ExecutiveCommandCenter({
                   </div>
                 )}
                 {!activeWorkout && workoutsOnDay.length === 0 && (
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(244,63,94,.05)" }}>
-                    <Dumbbell size={14} style={{ color: "#F43F5E" }} />
-                    <span style={{ fontSize: 12, color: "#4E4E72" }}>No workout logged for today</span>
+                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(249,115,22,.05)" }}>
+                    <Dumbbell size={14} style={{ color: "#F97316" }} />
+                    <span style={{ fontSize: 12, color: "#78716C" }}>No workout logged for today</span>
                   </div>
                 )}
               </div>
 
               {/* Nutrition bars */}
               <div className="mt-4 space-y-3">
-                <MacroBar label="Calories" value={totCal} target={CAL_TARGET} color="#FB923C" />
-                <MacroBar label="Protein"  value={totPro}  target={PRO_TARGET}  color="#38BDF8" />
-                <MacroBar label="Carbs"    value={totCarb} target={CARB_TARGET} color="#818CF8" />
-                <MacroBar label="Fat"      value={totFat}  target={FAT_TARGET}  color="#F472B6" />
+                <MacroBar label="Calories" value={totCal} target={CAL_TARGET} color="#F59E0B" />
+                <MacroBar label="Protein"  value={totPro}  target={PRO_TARGET}  color="#3B82F6" />
+                <MacroBar label="Carbs"    value={totCarb} target={CARB_TARGET} color="#6366F1" />
+                <MacroBar label="Fat"      value={totFat}  target={FAT_TARGET}  color="#EC4899" />
               </div>
             </div>
 
             {/* Habit Streaks */}
-            <div className="rounded-2xl p-4" style={cardSty}>
-              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>
+            <div className="rounded-2xl p-4 glass-card">
+              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
                 Habit Streaks
               </p>
               {todayGoalsWithStreak.length === 0 ? (
                 <div className="mt-3 flex flex-col items-center justify-center h-20 gap-2">
-                  <Target size={20} style={{ color: "#2A2A45" }} />
-                  <p style={{ fontSize: 12, color: "#3A3A5A" }}>No daily goals for today</p>
+                  <Target size={20} style={{ color: "#78716C" }} />
+                  <p style={{ fontSize: 12, color: "#78716C" }}>No daily goals for today</p>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2">
@@ -523,22 +522,22 @@ export default function ExecutiveCommandCenter({
                     const c = gColor(groups, goal.groupId);
                     const logged = goalLogs.some(l => l.goalId === goal.id && l.date === dKey(selectedDate));
                     return (
-                      <div key={goal.id} onClick={() => onDetail("goal", goal.id)}
-                        className="flex items-center justify-between rounded-xl px-3 py-2.5"
-                        style={{ ...cardSty, cursor: "pointer", opacity: logged ? 0.7 : 1 }}>
+                       <div key={goal.id} onClick={() => onDetail("goal", goal.id)}
+                         className="flex items-center justify-between rounded-xl px-3 py-2.5 glass-card-interactive"
+                         style={{ cursor: "pointer", opacity: logged ? 0.7 : 1 }}>
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `${c}25` }} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-white font-semibold text-sm truncate"
+                            <p className="text-stone-900 font-semibold text-sm truncate"
                               style={{ textDecoration: logged ? "line-through" : "none" }}>{goal.title}</p>
-                            <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>
+                            <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
                               {goal.amount} {goal.unit}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {streak > 0 && (
-                            <span className="text-xs font-bold" style={{ color: "#FBBF24" }}>
+                            <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
                               🔥 {streak} Day{streak !== 1 ? "s" : ""}
                             </span>
                           )}

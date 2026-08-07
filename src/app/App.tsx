@@ -3,10 +3,13 @@ import {
   Home, BarChart3, Utensils, Target,
   Plus, X, Check, ChevronLeft, ChevronRight,
   Dumbbell, Settings, Trash2,
-  Play, MoreHorizontal, Calendar, //ChevronDown,//
+  Play, MoreHorizontal, Calendar, Wallet,
+  //ChevronDown,//
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
+import FitnessView from "../components/FitnessView";
+import BudgetView, { BudgetCategory, BudgetTransaction } from "../components/BudgetView";
 import type { PlannerDataPayload } from "../lib/plannerStorage";
 import {
   loadPlannerData,
@@ -23,7 +26,7 @@ export interface AppProps {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type Screen     = "home" | "workout" | "calendar" | "meal" | "goals";
+export type Screen     = "home" | "fitness" | "calendar" | "goals" | "budget";
 export type TodayTab   = "all" | "events" | "tasks" | "goals" | "active";
 export type ModalKind  = "event" | "task" | "meal" | "goal" | "startWorkout" | "groups";
 export type DetailKind = "event" | "task" | "goal" | "meal" | "workout";
@@ -125,10 +128,10 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-export const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none border border-white/10 transition-all duration-200";
-export const inputSty = { backgroundColor: "rgba(255,255,255,.07)", caretColor: "#6366F1" } as React.CSSProperties;
-export const labelSty = { color: "#4E4E72", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const };
-export const cardSty  = { backgroundColor: "rgba(255,255,255,.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" } as React.CSSProperties;
+export const inputCls = "w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 backdrop-blur-md transition-all duration-200 focus:border-stone-300 focus:bg-white";
+export const inputSty = { backgroundColor: "rgba(255,255,255,.8)", caretColor: "#6366F1" } as React.CSSProperties;
+export const labelSty = { color: "#78716C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
+export const cardSty  = { backgroundColor: "rgba(255,255,255,.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,.6)" } as React.CSSProperties;
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -136,9 +139,9 @@ function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d:
     <div className="flex gap-1.5">
       {["S","M","T","W","T","F","S"].map((d, i) => (
         <button key={i} onClick={() => toggle(i)} className="flex-1 h-8 rounded-lg text-xs font-bold"
-          style={{ backgroundColor: selected.includes(i) ? "rgba(99,102,241,.25)" : "rgba(255,255,255,.06)",
-            color: selected.includes(i) ? "#818CF8" : "#4E4E72",
-            outline: selected.includes(i) ? "1px solid rgba(99,102,241,.45)" : "none" }}>
+          style={{ backgroundColor: selected.includes(i) ? "rgba(99,102,241,.15)" : "rgba(255,255,255,.5)",
+            color: selected.includes(i) ? "#6366F1" : "#78716C",
+            outline: selected.includes(i) ? "1px solid rgba(99,102,241,.3)" : "none" }}>
           {d}
         </button>
       ))}
@@ -154,10 +157,10 @@ function GroupPicker({ groups, selected, onChange }: { groups: Group[]; selected
         None
       </button>
       {groups.map(g => (
-        <button key={g.id} onClick={() => onChange(g.id)} className="px-3 py-1.5 rounded-xl text-xs font-semibold"
-          style={{ backgroundColor: selected === g.id ? `${g.color}22` : "rgba(255,255,255,.06)",
-            color: selected === g.id ? g.color : "#4E4E72",
-            outline: selected === g.id ? `1px solid ${g.color}50` : "none" }}>
+      <button key={g.id} onClick={() => onChange(g.id)} className="px-3 py-1.5 rounded-xl text-xs font-semibold"
+        style={{ backgroundColor: selected === g.id ? `${g.color}20` : "rgba(255,255,255,.5)",
+          color: selected === g.id ? g.color : "#78716C",
+          outline: selected === g.id ? `1px solid ${g.color}40` : "none" }}>
           {g.name}
         </button>
       ))}
@@ -216,19 +219,19 @@ function SubtaskEditor({
       {subtasks.length > 0 && (
         <div className="space-y-1.5 mb-2">
           {subtasks.map(st => (
-            <div key={st.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
+              <div key={st.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,.6)" }}>
               <button type="button" onClick={() => toggle(st.id)} className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0"
                 style={{ borderColor: accentColor, backgroundColor: st.done ? accentColor : "transparent" }}>
                 {st.done && <Check size={10} className="text-white" />}
               </button>
-              <span className="flex-1 text-xs" style={{ color: st.done ? "#7878A4" : "#EEEEF8", textDecoration: st.done ? "line-through" : "none" }}>
+              <span className="flex-1 text-xs" style={{ color: st.done ? "#78716C" : "#1C1917", textDecoration: st.done ? "line-through" : "none" }}>
                 {st.title}
                 {st.dueDate && st.dueDate !== parentDueDate && (
-                  <span style={{ color: "#4E4E72" }}> ({st.dueDate})</span>
+                  <span style={{ color: "#78716C" }}> ({st.dueDate})</span>
                 )}
               </span>
               <button type="button" onClick={() => remove(st.id)}>
-                <X size={12} style={{ color: "#4E4E72" }} />
+                <X size={12} style={{ color: "#78716C" }} />
               </button>
             </div>
           ))}
@@ -308,16 +311,16 @@ function TaskSubtaskSection({ task, accentColor, onUpdate }: {
 
 function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.72)", backdropFilter: "blur(10px)" }} onClick={onClose}>
+    <div className="absolute inset-0 z-50 flex items-end glass-overlay dark:bg-black/60" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={onClose}>
       <div className="w-full rounded-t-3xl glass-modal" onClick={e => e.stopPropagation()}>
         <div className="flex justify-center pt-3">
-          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.14)" }} />
+          <div className="w-10 h-1 rounded-full dark:bg-white/10 bg-black/15" />
         </div>
         <div className="flex items-center justify-between px-5 pt-3 pb-3">
-          <h2 className="text-white font-bold text-base">{title}</h2>
-          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
-            <X size={13} className="text-white" />
+          <h2 className="dark:text-stone-100 text-stone-900 font-bold text-base">{title}</h2>
+          <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center dark:bg-white/10"
+            style={{ backgroundColor: "rgba(0,0,0,.08)" }}>
+            <X size={13} className="dark:text-stone-400 text-stone-700" />
           </button>
         </div>
         <div className="px-5 pb-8 overflow-y-auto space-y-4" style={{ maxHeight: "82vh", scrollbarWidth: "none" }}>
@@ -330,12 +333,12 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
 
 function InfoRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl px-4 py-3" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
+    <div className="rounded-xl px-4 py-3 dark:bg-white/5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
       <div className="flex items-start gap-3">
         <span style={{ fontSize: 14, lineHeight: 1 }}>{icon}</span>
         <div>
-          <p style={{ fontSize: 9, fontWeight: 700, color: "#4E4E72", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>{label}</p>
-          <p className="text-white text-sm" style={{ lineHeight: 1.5 }}>{children}</p>
+          <p className="dark:text-stone-400" style={{ fontSize: 9, fontWeight: 700, color: "#78716C", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>{label}</p>
+          <p className="dark:text-stone-100 text-stone-900 text-sm" style={{ lineHeight: 1.5 }}>{children}</p>
         </div>
       </div>
     </div>
@@ -436,8 +439,8 @@ function WorkoutScreen({
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-4 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>Training</p>
-          <h1 className="text-white font-bold" style={{ fontSize: 22 }}>Workouts</h1>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>Training</p>
+          <h1 className="text-stone-900 font-bold" style={{ fontSize: 22 }}>Workouts</h1>
         </div>
         <button onClick={() => onModal("startWorkout")}
           className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm"
@@ -458,7 +461,7 @@ function WorkoutScreen({
               </div>
               <div className="flex-1 min-w-0">
                 <p style={{ fontSize: 9, fontWeight: 700, color: "#F43F5E", letterSpacing: "0.08em", textTransform: "uppercase" }}>In Progress</p>
-                <p className="text-white font-bold text-sm truncate">{activeWorkout.name}</p>
+                <p className="text-stone-900 font-bold text-sm truncate">{activeWorkout.name}</p>
                 <p style={{ fontSize: 10, color: "rgba(244,63,94,.7)" }}>{activeWorkout.exercises.length} exercises · tap to resume</p>
               </div>
               <WorkoutElapsed startedAt={activeWorkout.startedAt} />
@@ -474,8 +477,8 @@ function WorkoutScreen({
               <Dumbbell size={32} style={{ color: "rgba(244,63,94,.4)" }} />
             </div>
             <div className="text-center">
-              <p className="text-white font-semibold text-sm">No workouts yet</p>
-              <p style={{ fontSize: 12, color: "#3A3A5A", marginTop: 4 }}>Start your first session to track progress</p>
+              <p className="text-stone-900 font-semibold text-sm">No workouts yet</p>
+              <p style={{ fontSize: 12, color: "#78716C", marginTop: 4 }}>Start your first session to track progress</p>
             </div>
             <button onClick={() => onModal("startWorkout")}
               className="px-8 py-3 rounded-full font-bold text-sm"
@@ -486,7 +489,7 @@ function WorkoutScreen({
         )}
 
         {sorted.length > 0 && (
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3A3A5A" }}>History</p>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>History</p>
         )}
         {sorted.map(w => {
           const totalSets = w.exercises.reduce((a, e) => a + e.sets.length, 0);
@@ -498,10 +501,10 @@ function WorkoutScreen({
           return (
             <div key={w.id} onClick={() => onDetail("workout", w.id)} className="rounded-2xl p-4" style={{ ...cardSty, cursor: "pointer" }}>
               <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-bold text-sm truncate">{w.name}</p>
-                  <p style={{ fontSize: 10, color: "#4E4E72", marginTop: 1 }}>{label} · {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}</p>
-                </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-stone-900 font-bold text-sm truncate">{w.name}</p>
+                <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>{label} · {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}</p>
+              </div>
                 <div className="rounded-xl px-2.5 py-1 ml-2 flex-shrink-0" style={{ backgroundColor: "rgba(244,63,94,.12)" }}>
                   <p style={{ fontSize: 10, fontWeight: 700, color: "#F43F5E" }}>{dur}m</p>
                 </div>
@@ -513,8 +516,8 @@ function WorkoutScreen({
                   { l: "Volume",     v: `${volume}lb`, c: "#F43F5E" },
                 ].map(s => (
                   <div key={s.l} className="rounded-xl py-2 text-center" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
-                    <p style={{ color: s.c, fontWeight: 700, fontSize: 12 }}>{s.v}</p>
-                    <p style={{ color: "#4E4E72", fontSize: 9 }}>{s.l}</p>
+                  <p style={{ color: s.c, fontWeight: 700, fontSize: 12 }}>{s.v}</p>
+                  <p style={{ color: "#78716C", fontSize: 9 }}>{s.l}</p>
                   </div>
                 ))}
               </div>
@@ -522,12 +525,12 @@ function WorkoutScreen({
                 <div className="mt-3 space-y-1">
                   {w.exercises.slice(0, 3).map(ex => (
                     <div key={ex.id} className="flex items-center justify-between">
-                      <p style={{ fontSize: 11, color: "#5A5A80" }}>{ex.name}</p>
-                      <p style={{ fontSize: 10, color: "#3A3A5A" }}>{ex.sets.length} sets</p>
+                      <p style={{ fontSize: 11, color: "#78716C" }}>{ex.name}</p>
+                      <p style={{ fontSize: 10, color: "#78716C" }}>{ex.sets.length} sets</p>
                     </div>
                   ))}
                   {w.exercises.length > 3 && (
-                    <p style={{ fontSize: 10, color: "#3A3A5A" }}>+{w.exercises.length - 3} more</p>
+                    <p style={{ fontSize: 10, color: "#78716C" }}>+{w.exercises.length - 3} more</p>
                   )}
                 </div>
               )}
@@ -556,15 +559,12 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
 
   function wlFor(day: number) {
     const d = new Date(year, month, day);
-    // Events that apply to this date
     const events = calEvents.filter(e => eventApplies(e, d));
-    // Tasks that apply to this date
     const tasks = calTasks.filter(t => taskApplies(t, d));
 
     const totalTasks = tasks.length;
     const timedTasks = tasks.filter(t => t.dueTime && t.dueTime.trim()).length;
 
-    // Sum event minutes using start/end times when available
     const eventMinutes = events.reduce((acc, ev) => {
       const start = t2m(ev.startTime || "");
       const end = t2m(ev.endTime || "");
@@ -576,10 +576,6 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
     const combinedMinutes = eventMinutes + estimatedTaskMinutes;
     const combinedHours = combinedMinutes / 60;
 
-    // Determine level using combined load AND task counts per spec
-    // Light: <2 hours AND ≤2 tasks
-    // Moderate: 2–5 hours OR 3–5 tasks
-    // Busy: >5 hours OR ≥6 tasks
     let level: "light" | "moderate" | "busy" | null = null;
     if (combinedMinutes === 0 && totalTasks === 0) level = null;
     else if (combinedHours < 2 && totalTasks <= 2) level = "light";
@@ -594,15 +590,15 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-3 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>Calendar</p>
-          <h1 className="text-white font-bold" style={{ fontSize: 18 }}>{MF[month]} {year}</h1>
+          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>Calendar</p>
+          <h1 className="text-stone-900 font-bold" style={{ fontSize: 18 }}>{MF[month]} {year}</h1>
         </div>
         <div className="flex gap-1.5 mb-1">
           {[{ Icon: ChevronLeft, delta: -1 }, { Icon: ChevronRight, delta: 1 }].map(({ Icon, delta }) => (
             <button key={delta} onClick={() => setViewDate(new Date(year, month + delta, 1))}
               className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-              <Icon size={14} style={{ color: "#7878A4" }} />
+              style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+              <Icon size={14} style={{ color: "#78716C" }} />
             </button>
           ))}
         </div>
@@ -611,13 +607,13 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
         {[["Light","#22C55E"],["Moderate","#EAB308"],["Busy","#EF4444"]].map(([l,c]) => (
           <div key={l} className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c }} />
-            <span style={{ fontSize: 8, color: "#4E4E72", fontWeight: 600 }}>{l}</span>
+            <span style={{ fontSize: 8, color: "#78716C", fontWeight: 600 }}>{l}</span>
           </div>
         ))}
       </div>
       <div className="px-4 pb-1 flex-shrink-0 grid grid-cols-7 gap-1">
         {["S","M","T","W","T","F","S"].map((d, i) => (
-          <div key={i} className="text-center" style={{ fontSize: 9, fontWeight: 700, color: "#3A3A5A" }}>{d}</div>
+          <div key={i} className="text-center" style={{ fontSize: 9, fontWeight: 700, color: "#78716C" }}>{d}</div>
         ))}
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-24" style={{ scrollbarWidth: "none" }}>
@@ -633,22 +629,20 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
             return (
               <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
                 className="aspect-square rounded-xl flex flex-col items-center justify-center"
-                style={{ backgroundColor: color ? `${color}25` : "rgba(255,255,255,.02)", outline: isSel ? "2px solid #6366F1" : isTod && !isSel ? "1px solid rgba(99,102,241,.4)" : "none" }}>
-                <span style={{ fontSize: 13, fontWeight: isSel || isTod ? 700 : 500, color: isSel ? "#818CF8" : isPast ? "rgba(238,238,248,.35)" : "#EEEEF8" }}>
+                style={{ backgroundColor: color ? `${color}15` : "rgba(0,0,0,.02)", outline: isSel ? "2px solid #6366F1" : isTod && !isSel ? "1px solid rgba(99,102,241,.3)" : "none" }}>
+                <span style={{ fontSize: 13, fontWeight: isSel || isTod ? 700 : 500, color: isSel ? "#6366F1" : isPast ? "rgba(28,25,23,.3)" : "#1C1917" }}>
                   {day}
                 </span>
-                {/* Task count badge and combined hours */}
                 {info?.totalTasks ? (
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.04)", color: color ?? "#EEEEF8" }}>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(0,0,0,.05)", color: color ?? "#1C1917" }}>
                       {info.totalTasks} Tasks
                     </span>
                     {info.combinedHours > 0 && (
-                      <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 700 }}>{info.combinedHours.toFixed(1)}h</span>
+                      <span style={{ fontSize: 10, color: "#78716C", fontWeight: 700 }}>{info.combinedHours.toFixed(1)}h</span>
                     )}
                   </div>
                 ) : (
-                  /* Small dot for activity when no explicit tasks but events exist */
                   color && <div className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: color }} />
                 )}
               </button>
@@ -757,7 +751,6 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
   onDetail: (kind: DetailKind, id: string) => void;
 }) {
   const today = todayDate();
-  // Build last 7 days for the streak dots
   const last7 = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
 
   return (
@@ -792,11 +785,11 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
           const c = gColor(groups, g.groupId);
           const todayLogged = goalLogs.some(l => l.goalId === g.id && l.date === dKey(today));
           return (
-            <div key={g.id} onClick={() => onDetail("goal", g.id)} className="rounded-2xl p-4" style={{ ...cardSty, cursor: "pointer" }}>
+            <div key={g.id} onClick={() => onDetail("goal", g.id)} className="rounded-2xl p-4 bg-white/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ cursor: "pointer", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm">{g.title}</p>
-                  <p style={{ fontSize: 10, color: c, marginTop: 2 }}>{g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}</p>
+                  <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm">{g.title}</p>
+                  <p className="text-stone-400 dark:text-stone-400" style={{ fontSize: 10, marginTop: 2 }}>{g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                   {g.groupId && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${c}20`, color: c }}>{gName(groups, g.groupId)}</span>}
@@ -809,7 +802,6 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
                   )}
                 </div>
               </div>
-              {/* 7-day streak dots */}
               <div className="flex gap-1 mt-3">
                 {last7.map(day => {
                   const applies = goalApplies(g, day);
@@ -901,7 +893,7 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
   const totalSets = activeWorkout.exercises.reduce((a, e) => a + e.sets.length, 0);
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0B0F17" }}>
+    <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0A0D14" }}>
       <div className="px-5 pt-10 pb-3 flex-shrink-0">
         <div className="flex items-start justify-between mb-3">
           <div>
@@ -1527,7 +1519,6 @@ function DetailModal({
             </>
           ) : (
             <>
-              {/* ── Event view ── */}
               {event && (
                 <>
                   {event.groupId && <div><span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ backgroundColor: `${color}20`, color }}>{gName(groups, event.groupId)}</span></div>}
@@ -1542,7 +1533,6 @@ function DetailModal({
                 </>
               )}
 
-              {/* ── Task view ── */}
               {task && (
                 <>
                   <button onClick={() => onTaskToggle(task.id)}
@@ -1570,7 +1560,6 @@ function DetailModal({
                 </>
               )}
 
-              {/* ── Goal view ── */}
               {goal && (
                 <>
                   {goal.groupId && <div><span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ backgroundColor: `${color}20`, color }}>{gName(groups, goal.groupId)}</span></div>}
@@ -1595,7 +1584,6 @@ function DetailModal({
                 </>
               )}
 
-              {/* ── Meal view ── */}
               {meal && (
                 <>
                   <div><span className="px-3 py-1.5 rounded-full text-xs font-bold capitalize" style={{ backgroundColor: "rgba(251,146,60,.15)", color: "#FB923C" }}>{meal.mealType}</span></div>
@@ -1613,7 +1601,6 @@ function DetailModal({
                 </>
               )}
 
-              {/* ── Workout view ── */}
               {workout && (
                 <>
                   <InfoRow icon="🗓" label="Date">{fmtDateStr(workout.date)}</InfoRow>
@@ -1660,7 +1647,7 @@ function AddMenu({ onSelect, onClose }: { onSelect: (m: ModalKind) => void; onCl
     { icon: Target,   label: "Goal",    m: "goal",         c: "#F472B6" },
   ];
   return (
-    <div className="absolute inset-0 z-40 flex items-end"
+    <div className="absolute inset-0 z-40 flex items-end glass-overlay"
       style={{ backgroundColor: "rgba(0,0,0,.6)", backdropFilter: "blur(8px)" }} onClick={onClose}>
       <div className="w-full px-4 pb-24" onClick={e => e.stopPropagation()}>
         <div className="grid grid-cols-5 gap-2 mb-3">
@@ -1685,30 +1672,36 @@ function AddMenu({ onSelect, onClose }: { onSelect: (m: ModalKind) => void; onCl
 }
 
 // ─── Bottom Nav ───────────────────────────────────────────────────────────────
-function BottomNav({ screen, onChange }: { screen: Screen; onChange: (s: Screen) => void }) {
+function BottomNav({ screen, onChange, onAccountClick }: { screen: Screen; onChange: (s: Screen) => void; onAccountClick: () => void }) {
   const items: { id: Screen; icon: React.ElementType; label: string }[] = [
-    { id: "home",    icon: Home,      label: "Home Page" },
+    { id: "home",    icon: Home,      label: "Home" },
     { id: "calendar",icon: BarChart3, label: "Calendar"   },
-    { id: "workout", icon: Dumbbell,  label: "Workout" },
-    { id: "meal",    icon: Utensils,  label: "Meal"    },
+    { id: "fitness", icon: Dumbbell,  label: "Fitness" },
     { id: "goals",   icon: Target,    label: "Goals"   },
+    { id: "budget",  icon: Wallet,    label: "Budget"   },
   ];
   return (
-    <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3"
-      style={{ background: "linear-gradient(to top, #0B0F17 65%, transparent)" }}>
-      <div className="flex items-center justify-around rounded-2xl px-1 py-1.5"
-        style={{ backgroundColor: "rgba(255,255,255,.07)" }}>
+    <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3 bg-gradient-to-t from-[#FAF8F5] via-stone-200/60 to-transparent dark:from-[#0f0e0d] dark:via-stone-950/80">
+      <div className="flex items-center justify-around rounded-2xl px-1 py-2 bg-white/80 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-sm dark:shadow-black/20">
         {items.map(item => {
           const active = screen === item.id;
           return (
             <button key={item.id} onClick={() => onChange(item.id)}
-              className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl"
-              style={{ backgroundColor: active ? "rgba(99,102,241,.25)" : "transparent" }}>
-              <item.icon size={18} style={{ color: active ? "#818CF8" : "#3A3A5E" }} />
-              <span style={{ fontSize: 9, fontWeight: 700, color: active ? "#818CF8" : "#3A3A5E" }}>{item.label}</span>
+              className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+              style={{ backgroundColor: active ? "rgba(99,102,241,.15)" : "transparent" }}>
+              <item.icon size={18} style={{ color: active ? "#6366F1" : "#78716C" }} className="dark:text-stone-400" />
+              <span style={{ fontSize: 9, fontWeight: 700, color: active ? "#6366F1" : "#78716C" }} className="dark:text-stone-400">{item.label}</span>
             </button>
           );
         })}
+        <button key="account" onClick={onAccountClick}
+          className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+          style={{ backgroundColor: "transparent" }}>
+          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold"
+            style={{ fontSize: 8, background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
+            U
+          </div>
+        </button>
       </div>
     </div>
   );
@@ -1755,6 +1748,10 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [detailItem, setDetailItem] = useState<{ kind: DetailKind; id: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
 
   const [calEvents,   setCalEvents]   = useState<CalEvent[]>([]);
   const [calTasks,    setCalTasks]    = useState<CalTask[]>([]);
@@ -1764,6 +1761,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [goalLogs,    setGoalLogs]    = useState<GoalLog[]>([]);
   const [groups,      setGroups]      = useState<Group[]>(DEFAULT_GROUPS);
   const [activeWorkout, setActiveWorkout] = useState<ActiveWO | null>(null);
+  const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
+  const [budgetTransactions, setBudgetTransactions] = useState<BudgetTransaction[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // ── Load planner data for this account ──
@@ -1795,6 +1794,17 @@ export default function App({ userId, username, onSignOut }: AppProps) {
 
     return () => { cancelled = true; };
   }, [userId]);
+
+  // ── Apply dark mode to root element and persist ──
+  useEffect(() => {
+    const root = document.documentElement;
+    if (darkMode) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("darkMode", JSON.stringify(darkMode));
+  }, [darkMode]);
 
   // ── Auto-save to cloud (debounced) + local backup ──
   useEffect(() => {
@@ -1837,7 +1847,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     }]);
     setActiveWorkout(null);
     setShowWorkoutOverlay(false);
-    setScreen("workout");
+    setScreen("fitness");
   };
 
   const cancelWorkout = () => {
@@ -1868,7 +1878,6 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const deleteMeal    = (id: string) => setCalMeals(p => p.filter(x => x.id !== id));
   const deleteWorkout = (id: string) => setCalWorkouts(p => p.filter(x => x.id !== id));
 
-  // Auto-navigate to the right place after adding so users see their new item
   const handleAddEvent = (e: CalEvent) => {
     setCalEvents(p => [...p, e]);
     setScreen("home");
@@ -1878,7 +1887,6 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setCalTasks(p => [...p, t]);
     setScreen("home");
     setTodayTab("all");
-    // Navigate to the task's due date so user sees it
     setSelectedDate(new Date(t.dueDate + "T00:00:00"));
   };
   const handleAddGoal = (g: CalGoal) => {
@@ -1886,22 +1894,37 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setScreen("goals");
   };
 
+  const handleAddBudgetCategory = (category: BudgetCategory) => {
+    setBudgetCategories(p => [...p, category]);
+  };
+
+  const handleAddBudgetTransaction = (transaction: BudgetTransaction) => {
+    setBudgetTransactions(p => [...p, transaction]);
+  };
+
+  const handleDeleteBudgetCategory = (id: string) => {
+    setBudgetCategories(p => p.filter(c => c.id !== id));
+  };
+
+  const handleDeleteBudgetTransaction = (id: string) => {
+    setBudgetTransactions(p => p.filter(t => t.id !== id));
+  };
+
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0B0F17", fontFamily: "'Inter', sans-serif" }}>
-      <div className="relative w-full max-w-sm overflow-hidden"
-        style={{ height: "100dvh", maxHeight: 900, backgroundColor: "#0B0F17", boxShadow: "0 0 100px rgba(0,0,0,.9)" }}>
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5] dark:bg-[#0f0e0d]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="relative w-full max-w-sm overflow-hidden bg-[#FAF8F5] dark:bg-[#0f0e0d]"
+        style={{ height: "100dvh", maxHeight: 900, boxShadow: "0 0 60px rgba(0,0,0,.08)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
           {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} />}
-          {screen === "workout" && <WorkoutScreen calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
+          {screen === "fitness" && <FitnessView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
           {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
 
           {drillDate && (
             <ModalShell title={`${DF[drillDate.getDay()]}, ${MF[drillDate.getMonth()].slice(0,3)} ${drillDate.getDate()}`} onClose={() => setDrillDate(null)}>
               <div>
-                {/* Build timeline items for the drilled date */}
                 {(() => {
                   const day = drillDate!;
                   const now = new Date();
@@ -1958,20 +1981,20 @@ export default function App({ userId, username, onSignOut }: AppProps) {
               </div>
             </ModalShell>
           )}
-          {screen === "meal"    && <MealView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} onModal={openModal} onDetail={openDetail} />}
           {screen === "goals"   && <GoalsView calGoals={calGoals} groups={groups} onModal={openModal} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} />}
+          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} />}
         </div>
 
         {/* FAB */}
         {!addOpen && !modal && !showWorkoutOverlay && (
           <button onClick={() => setAddOpen(true)}
             className="absolute right-5 z-30 rounded-full flex items-center justify-center"
-            style={{ bottom: 82, width: 50, height: 50, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", boxShadow: "0 8px 24px rgba(99,102,241,.45)" }}>
+            style={{ bottom: 82, width: 50, height: 50, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", boxShadow: "0 0 20px rgba(99,102,241,.5), 0 8px 24px rgba(99,102,241,.45)" }}>
             <Plus size={20} className="text-white" />
           </button>
         )}
 
-        <BottomNav screen={screen} onChange={setScreen} />
+        <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} />
 
         {addOpen && <AddMenu onSelect={openModal} onClose={() => setAddOpen(false)} />}
         {showWorkoutOverlay && activeWorkout && (
@@ -2004,6 +2027,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             syncStatus={syncStatus}
             onSignOut={onSignOut}
             onClose={() => setAccountOpen(false)}
+            darkMode={darkMode}
+            onToggleDarkMode={() => setDarkMode(!darkMode)}
           />
         )}
       </div>

@@ -44,12 +44,11 @@ export function AuthScreen({
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "#05050A", fontFamily: "'Inter', sans-serif" }}
+      className="min-h-screen flex items-center justify-center px-4 bg-[#FAF8F5] dark:bg-stone-950"
+      style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <div
-        className="w-full max-w-sm rounded-3xl p-6 space-y-5"
-        style={{ backgroundColor: "#0B0F17", boxShadow: "0 0 80px rgba(0,0,0,.85)" }}
+        className="w-full max-w-sm rounded-3xl p-6 space-y-5 bg-white/70 backdrop-blur-md border border-stone-200/60 shadow-sm shadow-stone-900/5 dark:bg-stone-900/60 dark:border-white/10 dark:shadow-black/20"
       >
         <div className="flex flex-col items-center gap-2 text-center">
           <div
@@ -58,20 +57,20 @@ export function AuthScreen({
           >
             <Target size={28} className="text-white" />
           </div>
-          <h1 className="text-white font-bold text-xl">One Stop Planner</h1>
-          <p style={{ fontSize: 13, color: "#4E4E72" }}>
+          <h1 className="dark:text-stone-100 text-stone-900 font-bold text-xl">One Stop Planner</h1>
+          <p className="dark:text-stone-400 text-stone-600" style={{ fontSize: 13 }}>
             {mode === "signin" ? "Sign in to load your planner" : "Create an account to save your data"}
           </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <p className="mb-1.5" style={{ fontSize: 10, fontWeight: 700, color: "#4E4E72", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <p className="mb-1.5 dark:text-stone-400 text-stone-600" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
               Username
             </p>
             <input
-              className={inputCls}
-              style={inputSty}
+              className="w-full rounded-xl px-4 py-3 dark:text-stone-100 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 backdrop-blur-md transition-all duration-200 focus:border-stone-300 focus:bg-white dark:bg-stone-800/80 dark:border-stone-700 dark:focus:border-stone-600"
+              style={{ backgroundColor: "rgba(255,255,255,.8)", caretColor: "#6366F1" }}
               autoComplete="username"
               placeholder="e.g. foster"
               value={username}
@@ -80,13 +79,13 @@ export function AuthScreen({
             />
           </div>
           <div>
-            <p className="mb-1.5" style={{ fontSize: 10, fontWeight: 700, color: "#4E4E72", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <p className="mb-1.5 dark:text-stone-400 text-stone-600" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
               Password
             </p>
             <input
               type="password"
-              className={inputCls}
-              style={inputSty}
+              className="w-full rounded-xl px-4 py-3 dark:text-stone-100 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 backdrop-blur-md transition-all duration-200 focus:border-stone-300 focus:bg-white dark:bg-stone-800/80 dark:border-stone-700 dark:focus:border-stone-600"
+              style={{ backgroundColor: "rgba(255,255,255,.8)", caretColor: "#6366F1" }}
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               placeholder="••••••••"
               value={password}
@@ -96,13 +95,13 @@ export function AuthScreen({
           </div>
           {mode === "signup" && (
             <div>
-              <p className="mb-1.5" style={{ fontSize: 10, fontWeight: 700, color: "#4E4E72", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              <p className="mb-1.5 dark:text-stone-400 text-stone-600" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
                 Confirm password
               </p>
               <input
                 type="password"
-                className={inputCls}
-                style={inputSty}
+                className="w-full rounded-xl px-4 py-3 dark:text-stone-100 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 backdrop-blur-md transition-all duration-200 focus:border-stone-300 focus:bg-white dark:bg-stone-800/80 dark:border-stone-700 dark:focus:border-stone-600"
+                style={{ backgroundColor: "rgba(255,255,255,.8)", caretColor: "#6366F1" }}
                 autoComplete="new-password"
                 placeholder="••••••••"
                 value={confirm}
@@ -114,7 +113,7 @@ export function AuthScreen({
         </div>
 
         {error && (
-          <p className="text-sm rounded-xl px-3 py-2" style={{ backgroundColor: "rgba(239,68,68,.12)", color: "#F87171" }}>
+          <p className="text-sm rounded-xl px-3 py-2 dark:bg-red-500/20 dark:text-red-400" style={{ backgroundColor: "rgba(239,68,68,.12)", color: "#EF4444" }}>
             {error}
           </p>
         )}
@@ -131,8 +130,7 @@ export function AuthScreen({
 
         <button
           type="button"
-          className="w-full text-sm font-semibold"
-          style={{ color: "#818CF8" }}
+          className="w-full text-sm font-semibold dark:text-indigo-400 text-indigo-600"
           onClick={() => {
             setMode(mode === "signin" ? "signup" : "signin");
             setError(null);

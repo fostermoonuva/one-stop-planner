@@ -1,6 +1,6 @@
 # One Stop Planner
 
-A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, meals, and goals — with username/password accounts and cloud sync via Supabase.
+A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (workouts + nutrition), budget tracking, and goals — with username/password accounts and cloud sync via Supabase.
 
 **Design source:** [Figma Make — Unified Life Planner](https://www.figma.com/make/2ULVMYxiSGscNIaBneXMiG/Unified-Life-Planner-App)
 
@@ -27,7 +27,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, 
 1. You open the app (localhost or Vercel URL).
 2. If not signed in, you see **Sign in / Create account** (username + password).
 3. After auth, your planner data loads from **Supabase** (with a local browser backup).
-4. You use five main tabs: **Today**, **Month**, **Workout**, **Meal**, **Goals**.
+4. You use five main tabs: **Today**, **Month**, **Fitness**, **Goals**, **Budget**.
 5. The purple **+** FAB opens a menu to add Event, Task, Meal, Workout, or Goal.
 6. Changes auto-save to the cloud (~0.7s after you edit) and to a per-user local backup.
 
@@ -56,6 +56,8 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, 
 | **Goal logs** | Per goal + date when completed |
 | **Groups** | Named color tags (School, Work, Personal, Fitness, Food, Wellness by default) |
 | **Active workout** | In-progress session (name, start time, live exercises/sets) |
+| **Budget categories** | Name, color, monthly spending cap |
+| **Budget transactions** | Category, amount, description, date, type (expense/income) |
 
 ---
 
@@ -65,11 +67,11 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, 
 
 | Feature | Description |
 |---------|-------------|
-| Bottom navigation | Today · Month · Workout · Meal · Goals |
+| Bottom navigation | Today · Month · Fitness · Goals · Budget |
 | Floating + button | Opens add menu (Event, Task, Meal, Workout, Goal) |
 | Account menu | Initials on Today → username, sync status, sign out |
 | Detail sheets | Tap an item to view, edit, delete, or toggle completion |
-| Theme | Dark UI, indigo/violet accents, Inter font |
+| Theme | Dark UI, glassmorphism cards/panels, indigo/violet accents, Inter font |
 
 ### Today
 
@@ -96,17 +98,18 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, 
 | Legend | Light / Moderate / Busy / Overloaded |
 | Day select | Tap a day to set the selected date (used by Today / Meal) |
 
-### Workout
+### Fitness (Workouts + Nutrition)
 
 | Feature | Description |
 |---------|-------------|
-| Start workout | Name the session → full-screen active overlay |
-| Active overlay | Live timer, add exercises, add sets (lbs/reps), mark sets done |
-| Finish / cancel | Saves completed workout to history, or discard |
-| History | Cards with duration, exercises, sets done, volume |
-| Resume | Resume in-progress workout from banner or Workout tab |
+| | Sub-navigation | Toggle between "Workouts" and "Nutrition" sub-views |
+| | Cross-domain banner | Today's workout status + nutrition calorie/macro rings |
+| | Workouts | Start workout, active overlay, history with duration/exercises/volume |
+| | Nutrition | Day navigation, daily totals (calories + protein/carbs/fat), meal type sections |
+| | Log meal | Name, description, type, date/time, macros |
+| | Empty slots | "+ Log {type}" dashed buttons |
 
-### Meal
+### Budget
 
 | Feature | Description |
 |---------|-------------|
@@ -115,6 +118,17 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), workouts, 
 | By meal type | Breakfast, lunch, dinner, snack sections |
 | Log meal | Name, description, type, date/time, macros |
 | Empty slots | “+ Log {type}” dashed buttons |
+
+### Budget (new)
+
+| Feature | Description |
+|---------|-------------|
+| | Monthly summary | Income, expenses, and net balance for current month |
+| | Category budgets | Create categories with custom colors and monthly spending caps |
+| | Progress bars | Visual spending progress per category (red when over cap) |
+| | Transactions | Log expenses and income with category, amount, description, date |
+| | Filter by category | View all transactions or filter by specific category |
+| | Delete | Remove categories and transactions |
 
 ### Goals
 
@@ -265,4 +279,4 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
-- **Tasks with subtasks** — create with optional subtasks; add/toggle from task detail; progress badges; parent auto-complete when all subtasks done.
+- **Unified Fitness Page + Budget Tracking** — merged Workout and Meal tabs into single Fitness page with sub-navigation and cross-domain summary banner; added comprehensive Budget Tracking page with dynamic monthly caps, category allocations, transaction logging, and flexible category assignment.
