@@ -71,7 +71,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Floating + button | Opens add menu (Event, Task, Meal, Workout, Goal) |
 | Account menu | Initials on Today → username, sync status, sign out |
 | Detail sheets | Tap an item to view, edit, delete, or toggle completion |
-| Theme | Dark UI, glassmorphism cards/panels, indigo/violet accents, Inter font |
+| Theme | **Electric Cobalt & Midnight Navy** — high-contrast Light/Dark modes, frosted glassmorphism (`backdrop-blur-md`), WCAG AA/AAA legible text, Inter font |
 
 ### Today
 
@@ -82,9 +82,9 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Week strip | 7-day strip centered on selected date; today outline; selected dot |
 | Filter tabs | All · Events · Tasks · Goals · Active (with count badges) |
 | Timeline | Hour grid (~6 AM–11 PM); overlapping layout; now line on current day |
-| Events on timeline | Colored cards with group color, title, subtitle, time range |
-| Timed tasks | On timeline with checkbox styling; optional "N/M subtasks" subtitle |
-| Untimed tasks | "Due Today" list with complete toggle + subtask progress badge |
+| Events on timeline | **Solid time-block containers** with prominent left accent bar (`border-l-4`), explicit time ranges, **no checkboxes** (locked time commitments) |
+| Timed tasks | **Floating glass cards** with interactive circular checkbox on the left + compact due-time badge using Sky/Sapphire task accent |
+| Untimed tasks | **Collapsible "Due Today (Anytime)"** section at top of day view with task accent color count badge |
 | Goals for the day | List with log/unlog for selected date |
 | Active / workouts | In-progress workout banner + completed workouts for the day |
 | Budget highlights | Always-visible monthly budget summary (total budget, spent, remaining) + per-category spending breakdown with progress bars; shows "No budget categories yet" empty state when no categories exist |
@@ -95,9 +95,10 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Feature | Description |
 |---------|-------------|
 | Month calendar | Navigate months with chevrons |
-| Workload colors | Green → yellow → orange → red by event+task count that day |
-| Legend | Light / Moderate / Busy / Overloaded |
+| Workload colors | Green → yellow → red by event+task count that day |
+| Legend | Light / Moderate / Busy |
 | Day select | Tap a day to set the selected date (used by Today / Meal) |
+| Dark mode legibility | Day numbers use `text-slate-100` in dark mode; busy/moderate/light cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable |
 
 ### Fitness (Workouts + Nutrition)
 
@@ -135,7 +136,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Feature | Description |
 |---------|-------------|
-| Goal cards | Title, amount/unit, schedule days, group chip |
+| Goal cards | Title, amount/unit, schedule days, group chip — **Violet accent** with streak indicators |
 | 7-day streak bars | Last 7 days; logged / scheduled / empty states |
 | Log today | Toggle completion for today when goal applies |
 | Groups | Color chips + Manage (add/delete custom groups) |
@@ -280,6 +281,8 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
+- **Calendar dark mode legibility fix** — Month view day numbers now use `text-slate-100` in dark mode (was hardcoded dark `#1C1917`), out-of-month/past days use `text-slate-600`, selected days use high-contrast `text-white` on an indigo fill, and busy/moderate/light workload cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable in both themes.
+- **Electric Cobalt & Midnight Navy theme system** — complete UI refactor to high-contrast modern theme with dynamic Light/Dark mode tokens (`--bg-primary`, `--card-bg`, `--text-primary`, `--accent-primary`), frosted glassmorphism on all cards, entity-specific accent colors (Events=Cobalt Blue, Tasks=Sky/Sapphire, Goals=Violet, Fitness=Crimson, Meals=Amber, Budget=Emerald), strict visual differentiation between events (solid time-blocks, no checkboxes), timed tasks (floating glass cards with circular checkboxes + due-time badges), and untimed tasks (collapsible "Due Today (Anytime)" section). Removed hardcoded colors in favor of dynamic `text-slate-900 dark:text-slate-50` / `text-slate-600 dark:text-slate-400` utilities for WCAG AA/AAA legibility.
 - **Budget Highlights on Home Page** — added monthly budget overview to the Today screen showing total budget, spending, and remaining balance, plus per-category breakdown with progress bars and remaining/over budget indicators.
 - **Home page layout refresh** — moved the Budget Highlights block to appear directly under "Today's Highlights" in the left column (previously in the right "Life Snapshot" column); made the budget block always visible even when no categories exist (shows a "No budget categories yet" empty state); removed the Quick Action Bar (quick new task/event/workout/meal buttons) that previously sat under Today's Highlights.
 - **Dark mode card & text support** — workout, nutrition, and budget cards now properly switch to dark backgrounds (`dark:bg-stone-900/60`) with readable text (`dark:text-stone-100`/`dark:text-stone-400`) in dark mode across FitnessView, BudgetView, and the home page ExecutiveCommandCenter.

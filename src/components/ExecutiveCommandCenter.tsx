@@ -46,7 +46,7 @@ function ProgressRing({ pct, color, label, subtitle }: {
       <svg viewBox="0 0 36 36" style={{ width: 56, height: 56 }}>
         <path
           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="3.5"
+          fill="none" stroke="rgba(15,23,42,.08)" strokeWidth="3.5"
           className="dark:stroke-white/10"
         />
         <path
@@ -55,10 +55,10 @@ function ProgressRing({ pct, color, label, subtitle }: {
           strokeDasharray={`${pct},100`} strokeLinecap="round"
         />
         <text x="18" y="20.5" fontSize="7" textAnchor="middle"
-          className="dark:fill-stone-100" fill="#1C1917" fontWeight={700}>{pct}%</text>
+          className="dark:fill-slate-50" fill="#0F172A" fontWeight={700}>{pct}%</text>
       </svg>
-      <p className="dark:text-stone-400" style={{ fontSize: 11, color: "#78716C", marginTop: 6, fontWeight: 700 }}>{label}</p>
-      <p className="dark:text-stone-500" style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>{subtitle}</p>
+      <p className="dark:text-slate-400" style={{ fontSize: 11, color: "#475569", marginTop: 6, fontWeight: 700 }}>{label}</p>
+      <p className="dark:text-slate-400" style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>{subtitle}</p>
     </div>
   );
 }
@@ -93,10 +93,10 @@ function MacroBar({ label, value, target, color }: {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="dark:text-stone-400" style={{ fontSize: 10, color: "#78716C", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        <span className="dark:text-stone-300" style={{ fontSize: 11, color: "#78716C", fontWeight: 700 }}>{value}{target > 0 ? ` / ${target}` : ""}</span>
+        <span className="dark:text-slate-400" style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+        <span className="dark:text-slate-300" style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>{value}{target > 0 ? ` / ${target}` : ""}</span>
       </div>
-      <div className="h-2 rounded-full dark:bg-white/10" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+      <div className="h-2 rounded-full dark:bg-white/10" style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color, minWidth: 2 }} />
       </div>
     </div>
@@ -246,21 +246,21 @@ export default function ExecutiveCommandCenter({
         <div className="flex items-center gap-2">
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
             className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
-            style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
-            <ChevronLeft size={15} className="dark:text-stone-400" style={{ color: "#78716C" }} />
+            style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
+            <ChevronLeft size={15} className="dark:text-slate-400" style={{ color: "#475569" }} />
           </button>
           <div>
-            <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+            <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
               {DF[selectedDate.getDay()]}
             </p>
-            <h1 className="text-stone-900 dark:text-stone-100 font-bold leading-none" style={{ fontSize: 20 }}>
+            <h1 className="text-slate-900 dark:text-slate-50 font-bold leading-none" style={{ fontSize: 20 }}>
               {MF[selectedDate.getMonth()]} {selectedDate.getDate()}
             </h1>
           </div>
           <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
-            style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
-            <ChevronRight size={15} className="dark:text-stone-400" style={{ color: "#78716C" }} />
+            style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
+            <ChevronRight size={15} className="dark:text-slate-400" style={{ color: "#475569" }} />
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export default function ExecutiveCommandCenter({
 
       {/* Greeting */}
       <div className="px-5 pb-1 flex-shrink-0">
-        <p className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 18 }}>
+        <p className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>
           {greeting}, {username}
         </p>
       </div>
@@ -284,9 +284,9 @@ export default function ExecutiveCommandCenter({
       {/* ── Metric Rings ── */}
       <div className="px-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-4 px-1">
-          <ProgressRing pct={tasksPct} color="#10B981" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
-          <ProgressRing pct={goalsPct} color="#6366F1" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
-          <ProgressRing pct={eventsPct} color="#F97316" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
+          <ProgressRing pct={tasksPct} color="#0284C7" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
+          <ProgressRing pct={goalsPct} color="#7C3AED" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
+          <ProgressRing pct={eventsPct} color="#2563EB" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
         </div>
       </div>
 
@@ -299,7 +299,7 @@ export default function ExecutiveCommandCenter({
 
             {/* Up Next Card */}
             <div className="rounded-2xl p-4 glass-card-interactive">
-              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+              <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
                 Up Next
               </p>
               {nextItem ? (
@@ -315,8 +315,8 @@ export default function ExecutiveCommandCenter({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{nextItem.title}</p>
-                    <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11, marginTop: 2 }}>
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{nextItem.title}</p>
+                    <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11, marginTop: 2 }}>
                       {m2d(nextItem.startMin)} – {m2d(nextItem.endMin)} · {nextItem.type}
                     </p>
                   </div>
@@ -329,15 +329,15 @@ export default function ExecutiveCommandCenter({
                 </div>
               ) : (
                 <div className="mt-3 flex flex-col items-center justify-center h-24 gap-2">
-                  <Calendar size={24} className="text-stone-500 dark:text-stone-400" style={{ color: "#78716C" }} />
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>Nothing coming up next</p>
+                  <Calendar size={24} className="text-slate-500 dark:text-slate-400" style={{ color: "#475569" }} />
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12 }}>Nothing coming up next</p>
                 </div>
               )}
             </div>
 
             {/* Today's Highlights */}
             <div className="rounded-2xl p-4 glass-card">
-              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+              <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
                 Today's Highlights
               </p>
               {(remainingTasks.length === 0 && remainingEvents.length === 0 && remainingWorkouts.length === 0 && remainingGoals.length === 0) ? (
@@ -362,7 +362,7 @@ export default function ExecutiveCommandCenter({
                         {t.done && <Check size={10} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100"
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50"
                           style={{ textDecoration: t.done ? "line-through" : "none" }}>{t.title}</p>
                       </div>
                       <SubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
@@ -383,8 +383,8 @@ export default function ExecutiveCommandCenter({
                       <div className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: gColor(groups, e.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{e.title}</p>
-                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{e.title}</p>
+                        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {m2d(t2m(e.startTime))} – {m2d(t2m(e.endTime))}
                         </p>
                       </div>
@@ -404,8 +404,8 @@ export default function ExecutiveCommandCenter({
                       style={{ cursor: "pointer" }}>
                       <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#F97316" }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{w.name}</p>
-                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{w.name}</p>
+                        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}
                         </p>
                       </div>
@@ -419,8 +419,8 @@ export default function ExecutiveCommandCenter({
                       style={{ cursor: "pointer" }}>
                       <Target size={14} style={{ color: gColor(groups, g.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{g.title}</p>
-                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{g.title}</p>
+                        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}
                         </p>
                       </div>
@@ -440,8 +440,8 @@ export default function ExecutiveCommandCenter({
             <div className="rounded-2xl p-4 glass-card">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Wallet size={14} style={{ color: "#6366F1" }} />
-                  <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+                  <Wallet size={14} style={{ color: "#2563EB" }} />
+                  <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
                     Budget This Month
                   </p>
                 </div>
@@ -449,40 +449,40 @@ export default function ExecutiveCommandCenter({
 
               {/* Summary */}
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Budget</p>
-                  <p className="font-bold" style={{ color: "#6366F1", fontSize: 14 }}>${totalBudget.toFixed(0)}</p>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Budget</p>
+                  <p className="font-bold" style={{ color: "#2563EB", fontSize: 14 }}>${totalBudget.toFixed(0)}</p>
                 </div>
-                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Spent</p>
-                  <p className="font-bold" style={{ color: "#F43F5E", fontSize: 14 }}>${totalSpent.toFixed(0)}</p>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Spent</p>
+                  <p className="font-bold" style={{ color: "#E11D48", fontSize: 14 }}>${totalSpent.toFixed(0)}</p>
                 </div>
-                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Left</p>
-                  <p className="font-bold" style={{ color: totalRemaining >= 0 ? "#10B981" : "#EF4444", fontSize: 14 }}>${totalRemaining.toFixed(0)}</p>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Left</p>
+                  <p className="font-bold" style={{ color: totalRemaining >= 0 ? "#059669" : "#EF4444", fontSize: 14 }}>${totalRemaining.toFixed(0)}</p>
                 </div>
               </div>
 
               {/* Category Breakdown */}
               {budgetCategories.length === 0 ? (
                 <div className="text-center py-4">
-                  <Wallet size={24} style={{ color: "#3A3A5A", marginBottom: 6 }} />
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11 }}>No budget categories yet</p>
+                  <Wallet size={24} style={{ color: "#475569", marginBottom: 6 }} />
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11 }}>No budget categories yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {categorySpending.map(cat => (
-                    <div key={cat.id} className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                    <div key={cat.id} className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                          <span className="text-stone-900 dark:text-stone-100 text-xs font-semibold">{cat.name}</span>
+                          <span className="text-slate-900 dark:text-slate-50 text-xs font-semibold">{cat.name}</span>
                         </div>
-                        <span className="text-stone-500 dark:text-stone-400 text-xs font-bold">
+                        <span className="text-slate-500 dark:text-slate-400 text-xs font-bold">
                           ${cat.spent.toFixed(0)} / ${cat.monthlyCap.toFixed(0)}
                         </span>
                       </div>
-                      <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+                      <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
                         <div
                           className="h-1.5 rounded-full transition-all"
                           style={{
@@ -491,7 +491,7 @@ export default function ExecutiveCommandCenter({
                           }}
                         />
                       </div>
-                      <p className="text-right mt-1 text-stone-500 dark:text-stone-400" style={{ fontSize: 9 }}>
+                      <p className="text-right mt-1 text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>
                         {cat.remaining >= 0 ? `${cat.remaining.toFixed(0)} left` : `${Math.abs(cat.remaining).toFixed(0)} over`}
                       </p>
                     </div>
@@ -506,7 +506,7 @@ export default function ExecutiveCommandCenter({
 
             {/* Fitness & Nutrition */}
             <div className="rounded-2xl p-4 glass-card">
-              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+              <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
                 Fitness & Nutrition
               </p>
 
@@ -520,8 +520,8 @@ export default function ExecutiveCommandCenter({
                       <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate">{activeWorkout.name}</p>
-                      <p style={{ fontSize: 10, color: "#F97316" }}>In progress · {activeWorkout.exercises.length} exercises</p>
+                      <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm truncate">{activeWorkout.name}</p>
+                      <p style={{ fontSize: 10, color: "#E11D48" }}>In progress · {activeWorkout.exercises.length} exercises</p>
                     </div>
                     <Play size={12} style={{ color: "#F97316" }} />
                   </div>
@@ -532,11 +532,11 @@ export default function ExecutiveCommandCenter({
                       <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate">
+                      <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm truncate">
                         {workoutsOnDay.length > 0 ? workoutsOnDay[0].name : "No workout today"}
                       </p>
                       {workoutsOnDay.length > 0 && (
-                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10 }}>
+                        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>
                           {m2d(t2m(workoutsOnDay[0].startTime))} – {m2d(t2m(workoutsOnDay[0].endTime))}
                         </p>
                       )}
@@ -544,31 +544,31 @@ export default function ExecutiveCommandCenter({
                   </div>
                 )}
                 {!activeWorkout && workoutsOnDay.length === 0 && (
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(249,115,22,.05)" }}>
-                    <Dumbbell size={14} style={{ color: "#F97316" }} />
-                    <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>No workout logged for today</span>
+                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(225,29,72,.05)" }}>
+                    <Dumbbell size={14} style={{ color: "#E11D48" }} />
+                    <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12 }}>No workout logged for today</span>
                   </div>
                 )}
               </div>
 
               {/* Nutrition bars */}
               <div className="mt-4 space-y-3">
-                <MacroBar label="Calories" value={totCal} target={CAL_TARGET} color="#F59E0B" />
-                <MacroBar label="Protein"  value={totPro}  target={PRO_TARGET}  color="#3B82F6" />
-                <MacroBar label="Carbs"    value={totCarb} target={CARB_TARGET} color="#6366F1" />
-                <MacroBar label="Fat"      value={totFat}  target={FAT_TARGET}  color="#EC4899" />
+                <MacroBar label="Calories" value={totCal} target={CAL_TARGET} color="#D97706" />
+                <MacroBar label="Protein"  value={totPro}  target={PRO_TARGET}  color="#0284C7" />
+                <MacroBar label="Carbs"    value={totCarb} target={CARB_TARGET} color="#2563EB" />
+                <MacroBar label="Fat"      value={totFat}  target={FAT_TARGET}  color="#E11D48" />
               </div>
             </div>
 
             {/* Habit Streaks */}
             <div className="rounded-2xl p-4 glass-card">
-              <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+              <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
                 Habit Streaks
               </p>
               {todayGoalsWithStreak.length === 0 ? (
                 <div className="mt-3 flex flex-col items-center justify-center h-20 gap-2">
-                  <Target size={20} className="text-stone-500 dark:text-stone-400" style={{ color: "#78716C" }} />
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>No daily goals for today</p>
+                  <Target size={20} className="text-slate-500 dark:text-slate-400" style={{ color: "#475569" }} />
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12 }}>No daily goals for today</p>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2">
@@ -582,9 +582,9 @@ export default function ExecutiveCommandCenter({
                          <div className="flex items-center gap-2.5 min-w-0">
                            <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `${c}25` }} />
                            <div className="flex-1 min-w-0">
-                             <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate"
+                             <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm truncate"
                                style={{ textDecoration: logged ? "line-through" : "none" }}>{goal.title}</p>
-                             <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
+                             <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
                                {goal.amount} {goal.unit}
                              </p>
                            </div>

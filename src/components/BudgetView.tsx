@@ -113,47 +113,47 @@ export default function BudgetView({
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-10 pb-4 flex-shrink-0">
-        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Finance</p>
-        <h1 className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 22 }}>Budget</h1>
+        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Finance</p>
+        <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Budget</h1>
       </div>
 
       {/* Monthly Summary */}
       <div className="px-4 flex-shrink-0 space-y-3">
-        <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, color: "#78716C", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>This Month</p>
+        <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>This Month</p>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Income</p>
-              <p className="font-bold" style={{ color: "#10B981", fontSize: 16 }}>${totalIncome.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Income</p>
+              <p className="font-bold" style={{ color: "#059669", fontSize: 16 }}>${totalIncome.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Expenses</p>
-              <p className="font-bold" style={{ color: "#F43F5E", fontSize: 16 }}>${totalExpenses.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Expenses</p>
+              <p className="font-bold" style={{ color: "#E11D48", fontSize: 16 }}>${totalExpenses.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Balance</p>
-              <p className="font-bold" style={{ color: netBalance >= 0 ? "#6366F1" : "#EF4444", fontSize: 16 }}>${netBalance.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Balance</p>
+              <p className="font-bold" style={{ color: netBalance >= 0 ? "#2563EB" : "#EF4444", fontSize: 16 }}>${netBalance.toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         {/* Category Budgets */}
-        <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+        <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <PieChart size={14} style={{ color: "#6366F1" }} />
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Categories</p>
+              <PieChart size={14} style={{ color: "#2563EB" }} />
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Categories</p>
             </div>
-            <button onClick={() => setShowAddCategory(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
-              <Plus size={12} style={{ color: "#6366F1" }} />
+            <button onClick={() => setShowAddCategory(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
+              <Plus size={12} style={{ color: "#2563EB" }} />
             </button>
           </div>
           
           {categories.length === 0 ? (
             <div className="text-center py-6">
-              <Wallet size={32} style={{ color: "#3A3A5A", marginBottom: 8 }} />
-              <p className="text-stone-600 dark:text-stone-400" style={{ fontSize: 12 }}>No categories yet</p>
-              <button onClick={() => setShowAddCategory(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(99,102,241,.2)", color: "#6366F1" }}>
+              <Wallet size={32} style={{ color: "#475569", marginBottom: 8 }} />
+              <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>No categories yet</p>
+              <button onClick={() => setShowAddCategory(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}>
                 Add Category
               </button>
             </div>
@@ -165,14 +165,14 @@ export default function BudgetView({
                 const isOver = spent > cat.monthlyCap;
                 
                 return (
-                  <div key={cat.id} className="rounded-xl p-3" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                  <div key={cat.id} className="rounded-xl p-3" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-                        <span className="text-stone-900 dark:text-stone-100 text-sm font-semibold">{cat.name}</span>
+                        <span className="text-slate-900 dark:text-slate-50 text-sm font-semibold">{cat.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold" style={{ color: isOver ? "#EF4444" : "#78716C" }}>
+                        <span className="text-xs font-bold" style={{ color: isOver ? "#EF4444" : "#475569" }}>
                           ${spent.toFixed(2)} / ${cat.monthlyCap.toFixed(2)}
                         </span>
                         <button onClick={() => onDeleteCategory(cat.id)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
@@ -180,7 +180,7 @@ export default function BudgetView({
                         </button>
                       </div>
                     </div>
-                    <div className="w-full h-2 rounded-full" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+                    <div className="w-full h-2 rounded-full" style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
                       <div className="h-2 rounded-full transition-all" style={{ width: `${percent}%`, backgroundColor: isOver ? "#EF4444" : cat.color }} />
                     </div>
                   </div>
@@ -194,18 +194,18 @@ export default function BudgetView({
       {/* Transactions */}
       <div className="flex-1 overflow-y-auto px-4 pb-28 mt-3" style={{ scrollbarWidth: "none" }}>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transactions</p>
-          <button onClick={() => setShowAddTransaction(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
-            <Plus size={12} style={{ color: "#6366F1" }} />
-            <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700 }}>Add</span>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transactions</p>
+          <button onClick={() => setShowAddTransaction(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
+            <Plus size={12} style={{ color: "#2563EB" }} />
+            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700 }}>Add</span>
           </button>
         </div>
 
         {sortedTransactions.length === 0 ? (
           <div className="text-center py-12">
-            <Wallet size={48} style={{ color: "#3A3A5A", marginBottom: 12 }} />
-            <p className="text-stone-600 dark:text-stone-400" style={{ fontSize: 13, marginBottom: 4 }}>No transactions yet</p>
-            <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11 }}>Start tracking your expenses and income</p>
+            <Wallet size={48} style={{ color: "#475569", marginBottom: 12 }} />
+            <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 13, marginBottom: 4 }}>No transactions yet</p>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11 }}>Start tracking your expenses and income</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -214,30 +214,30 @@ export default function BudgetView({
               const isExpense = t.type === "expense";
               
               return (
-                <div key={t.id} className="rounded-2xl p-3.5 flex items-center justify-between bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                <div key={t.id} className="rounded-2xl p-3.5 flex items-center justify-between bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${category?.color || "#6366F1"}20` }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${category?.color || "#2563EB"}20` }}>
                       {isExpense ? (
-                        <TrendingDown size={18} style={{ color: "#F43F5E" }} />
+                        <TrendingDown size={18} style={{ color: "#E11D48" }} />
                       ) : (
-                        <TrendingUp size={18} style={{ color: "#10B981" }} />
+                        <TrendingUp size={18} style={{ color: "#059669" }} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-stone-900 dark:text-stone-100 text-sm font-semibold truncate">{t.description || (isExpense ? "Expense" : "Income")}</p>
+                      <p className="text-slate-900 dark:text-slate-50 text-sm font-semibold truncate">{t.description || (isExpense ? "Expense" : "Income")}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {category && (
                           <div className="flex items-center gap-1">
                             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }} />
-                            <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9 }}>{category.name}</span>
+                            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{category.name}</span>
                           </div>
                         )}
-                        <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9 }}>{t.date}</span>
+                        <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{t.date}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold flex-shrink-0" style={{ color: isExpense ? "#F43F5E" : "#10B981", fontSize: 14 }}>
+                    <span className="font-bold flex-shrink-0" style={{ color: isExpense ? "#E11D48" : "#059669", fontSize: 14 }}>
                       {isExpense ? "-" : "+"}${t.amount.toFixed(2)}
                     </span>
                     <button onClick={() => onDeleteTransaction(t.id)} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
@@ -254,7 +254,7 @@ export default function BudgetView({
       {/* Add Category Modal */}
       {showAddCategory && (
         <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowAddCategory(false)}>
-          <div className="w-full rounded-t-3xl p-5 space-y-4" style={{ backgroundColor: "#1C1917" }} onClick={e => e.stopPropagation()}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>
@@ -277,7 +277,7 @@ export default function BudgetView({
       {/* Add Transaction Modal */}
       {showAddTransaction && (
         <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowAddTransaction(false)}>
-          <div className="w-full rounded-t-3xl p-5 space-y-4" style={{ backgroundColor: "#1C1917" }} onClick={e => e.stopPropagation()}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>

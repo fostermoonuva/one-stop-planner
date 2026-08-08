@@ -5,7 +5,7 @@ import { useAuth } from "./hooks/useAuth";
 function LoadingScreen() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-[#FAF8F5] dark:bg-[#0f0e0d]"
+      className="min-h-screen flex items-center justify-center bg-[#F4F7FA] dark:bg-[#0B0F19]"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <div className="text-center">
@@ -19,7 +19,7 @@ function LoadingScreen() {
 function SetupRequired() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6 bg-[#FAF8F5] dark:bg-[#0f0e0d]"
+      className="min-h-screen flex items-center justify-center px-6 bg-[#F4F7FA] dark:bg-[#0B0F19]"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <div className="max-w-md">

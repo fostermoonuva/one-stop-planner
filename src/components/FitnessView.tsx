@@ -53,7 +53,7 @@ function FitnessSummaryBanner({
   const FAT_TARGET = 65;
 
   return (
-    <div className="rounded-2xl p-4 space-y-3 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+    <div className="rounded-2xl p-4 space-y-3 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
       {/* Workout Section */}
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
@@ -61,19 +61,19 @@ function FitnessSummaryBanner({
           <Dumbbell size={18} style={{ color: "#F43F5E" }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Workout</p>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Workout</p>
           {activeWorkout ? (
             <button onClick={onResumeWorkout} className="w-full text-left">
-              <p className="text-stone-900 dark:text-stone-100 font-bold text-sm truncate">{activeWorkout.name}</p>
-              <p style={{ fontSize: 10, color: "rgba(244,63,94,.7)" }}>In Progress · tap to resume</p>
+              <p className="text-slate-900 dark:text-slate-50 font-bold text-sm truncate">{activeWorkout.name}</p>
+              <p style={{ fontSize: 10, color: "rgba(225,29,72,.7)" }}>In Progress · tap to resume</p>
             </button>
           ) : latestWorkout ? (
             <div>
-              <p className="text-stone-900 dark:text-stone-100 font-bold text-sm truncate">{latestWorkout.name}</p>
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10 }}>{isCurrentDay ? "Today" : `${MF[selectedDate.getMonth()].slice(0,3)} ${selectedDate.getDate()}`} · {workoutDuration}m</p>
+              <p className="text-slate-900 dark:text-slate-50 font-bold text-sm truncate">{latestWorkout.name}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>{isCurrentDay ? "Today" : `${MF[selectedDate.getMonth()].slice(0,3)} ${selectedDate.getDate()}`} · {workoutDuration}m</p>
             </div>
           ) : (
-            <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>No workout {isCurrentDay ? "yet" : "this day"}</p>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12 }}>No workout {isCurrentDay ? "yet" : "this day"}</p>
           )}
         </div>
       </div>
@@ -81,18 +81,18 @@ function FitnessSummaryBanner({
       {/* Nutrition Section */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <Utensils size={14} style={{ color: "#FB923C" }} />
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Nutrition</p>
-          {isCurrentDay && <span className="font-bold" style={{ fontSize: 13, color: "#FB923C" }}>{totalCal} kcal</span>}
+          <Utensils size={14} style={{ color: "#D97706" }} />
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Nutrition</p>
+          {isCurrentDay && <span className="font-bold" style={{ fontSize: 13, color: "#D97706" }}>{totalCal} kcal</span>}
         </div>
         
         {/* Macro Rings */}
         <div className="grid grid-cols-4 gap-2">
           {[
-            { label: "Cal", current: totalCal, target: CAL_TARGET, unit: "", color: "#FB923C" },
-            { label: "Protein", current: totalPro, target: PRO_TARGET, unit: "g", color: "#38BDF8" },
-            { label: "Carbs", current: totalCarb, target: CARB_TARGET, unit: "g", color: "#818CF8" },
-            { label: "Fat", current: totalFat, target: FAT_TARGET, unit: "g", color: "#F472B6" },
+            { label: "Cal", current: totalCal, target: CAL_TARGET, unit: "", color: "#D97706" },
+            { label: "Protein", current: totalPro, target: PRO_TARGET, unit: "g", color: "#0284C7" },
+            { label: "Carbs", current: totalCarb, target: CARB_TARGET, unit: "g", color: "#2563EB" },
+            { label: "Fat", current: totalFat, target: FAT_TARGET, unit: "g", color: "#E11D48" },
           ].map(macro => {
             const percent = Math.min((macro.current / macro.target) * 100, 100);
             const circumference = 2 * Math.PI * 18;
@@ -120,10 +120,10 @@ function FitnessSummaryBanner({
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-stone-900 dark:text-stone-100" style={{ fontSize: 9, fontWeight: 700 }}>{Math.round(percent)}%</span>
+                    <span className="text-slate-900 dark:text-slate-50" style={{ fontSize: 9, fontWeight: 700 }}>{Math.round(percent)}%</span>
                   </div>
                 </div>
-                <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, fontWeight: 600 }}>{macro.label}</span>
+                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 600 }}>{macro.label}</span>
               </div>
             );
           })}
@@ -156,8 +156,8 @@ function WorkoutsSubView({
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-4 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Training</p>
-          <h1 className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 22 }}>Workouts</h1>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Training</p>
+          <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Workouts</h1>
         </div>
         <button onClick={() => onModal("startWorkout")}
           className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm"
@@ -177,9 +177,9 @@ function WorkoutsSubView({
                 <Dumbbell size={18} style={{ color: "#F43F5E" }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>In Progress</p>
-                <p className="text-stone-900 dark:text-stone-100 font-bold text-sm truncate">{activeWorkout.name}</p>
-                <p style={{ fontSize: 10, color: "rgba(244,63,94,.7)" }}>{activeWorkout.exercises.length} exercises · tap to resume</p>
+                <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>In Progress</p>
+                <p className="text-slate-900 dark:text-slate-50 font-bold text-sm truncate">{activeWorkout.name}</p>
+                <p style={{ fontSize: 10, color: "rgba(225,29,72,.7)" }}>{activeWorkout.exercises.length} exercises · tap to resume</p>
               </div>
               <WorkoutElapsed startedAt={activeWorkout.startedAt} />
             </div>
@@ -194,8 +194,8 @@ function WorkoutsSubView({
               <Dumbbell size={32} style={{ color: "rgba(244,63,94,.4)" }} />
             </div>
             <div className="text-center">
-              <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm">No workouts yet</p>
-              <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12, marginTop: 4 }}>Start your first session to track progress</p>
+              <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm">No workouts yet</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, marginTop: 4 }}>Start your first session to track progress</p>
             </div>
             <button onClick={() => onModal("startWorkout")}
               className="px-8 py-3 rounded-full font-bold text-sm"
@@ -206,7 +206,7 @@ function WorkoutsSubView({
         )}
 
         {sorted.length > 0 && (
-          <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>History</p>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>History</p>
         )}
         {sorted.map(w => {
           const totalSets = w.exercises.reduce((a, e) => a + e.sets.length, 0);
@@ -216,11 +216,11 @@ function WorkoutsSubView({
           const dateObj   = new Date(w.date + "T00:00:00");
           const label     = isToday(dateObj) ? "Today" : `${MF[dateObj.getMonth()].slice(0,3)} ${dateObj.getDate()}`;
           return (
-            <div key={w.id} onClick={() => onDetail("workout", w.id)} className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", cursor: "pointer" }}>
+            <div key={w.id} onClick={() => onDetail("workout", w.id)} className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", cursor: "pointer" }}>
               <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
-                <p className="text-stone-900 dark:text-stone-100 font-bold text-sm truncate">{w.name}</p>
-                <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>{label} · {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}</p>
+                <p className="text-slate-900 dark:text-slate-50 font-bold text-sm truncate">{w.name}</p>
+                <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>{label} · {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}</p>
               </div>
                 <div className="rounded-xl px-2.5 py-1 ml-2 flex-shrink-0" style={{ backgroundColor: "rgba(244,63,94,.12)" }}>
                   <p style={{ fontSize: 10, fontWeight: 700, color: "#F43F5E" }}>{dur}m</p>
@@ -234,7 +234,7 @@ function WorkoutsSubView({
                 ].map(s => (
                   <div key={s.l} className="rounded-xl py-2 text-center" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
                   <p style={{ color: s.c, fontWeight: 700, fontSize: 12 }}>{s.v}</p>
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9 }}>{s.l}</p>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{s.l}</p>
                   </div>
                 ))}
               </div>
@@ -242,12 +242,12 @@ function WorkoutsSubView({
                 <div className="mt-3 space-y-1">
                   {w.exercises.slice(0, 3).map(ex => (
                     <div key={ex.id} className="flex items-center justify-between">
-                      <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11 }}>{ex.name}</p>
-                      <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10 }}>{ex.sets.length} sets</p>
+                      <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11 }}>{ex.name}</p>
+                      <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>{ex.sets.length} sets</p>
                     </div>
                   ))}
                   {w.exercises.length > 3 && (
-                    <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10 }}>+{w.exercises.length - 3} more</p>
+                    <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>+{w.exercises.length - 3} more</p>
                   )}
                 </div>
               )}
@@ -297,8 +297,8 @@ function NutritionSubView({
             <ChevronLeft size={14} style={{ color: "#7878A4" }} />
           </button>
           <div>
-            <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Nutrition</p>
-            <h1 className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 18 }}>{MF[selectedDate.getMonth()].slice(0,3)} {selectedDate.getDate()}</h1>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Nutrition</p>
+            <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>{MF[selectedDate.getMonth()].slice(0,3)} {selectedDate.getDate()}</h1>
           </div>
           <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
@@ -315,14 +315,14 @@ function NutritionSubView({
         {todayMeals.length > 0 && (
           <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-stone-900 dark:text-stone-100 font-bold text-sm">Today's Total</p>
-              <p className="font-bold" style={{ color: "#FB923C", fontSize: 15 }}>{totCal} kcal</p>
+              <p className="text-slate-900 dark:text-slate-50 font-bold text-sm">Today's Total</p>
+              <p className="font-bold" style={{ color: "#D97706", fontSize: 15 }}>{totCal} kcal</p>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {[{ l:"Protein", v:totPro, c:"#38BDF8" }, { l:"Carbs", v:totCarb, c:"#818CF8" }, { l:"Fat", v:totFat, c:"#F472B6" }].map(n => (
+              {[{ l:"Protein", v:totPro, c:"#0284C7" }, { l:"Carbs", v:totCarb, c:"#2563EB" }, { l:"Fat", v:totFat, c:"#E11D48" }].map(n => (
                 <div key={n.l} className="rounded-xl py-2.5 text-center" style={{ backgroundColor: "rgba(255,255,255,.04)" }}>
                   <p className="font-bold leading-none" style={{ color: n.c, fontSize: 16 }}>{n.v}g</p>
-                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 2 }}>{n.l}</p>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 2 }}>{n.l}</p>
                 </div>
               ))}
             </div>
@@ -334,21 +334,21 @@ function NutritionSubView({
             <div key={type}>
               <div className="flex items-center gap-2 mb-2">
                 <span>{MEAL_ICONS[type]}</span>
-                <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "capitalize" }}>{type}</p>
-                {meals.length > 0 && <span style={{ fontSize: 9, color: "#FB923C" }}>{meals.reduce((a,m)=>a+m.calories,0)} cal</span>}
+                <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "capitalize" }}>{type}</p>
+                {meals.length > 0 && <span style={{ fontSize: 9, color: "#D97706" }}>{meals.reduce((a,m)=>a+m.calories,0)} cal</span>}
               </div>
               {meals.length > 0 ? meals.map(m => (
                 <div key={m.id} onClick={() => onDetail("meal", m.id)} className="rounded-2xl p-3.5 mb-2 flex items-start justify-between bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", cursor: "pointer" }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm">{m.name}</p>
-                    {m.description && <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11, marginTop: 2 }}>{m.description}</p>}
+                    <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm">{m.name}</p>
+                    {m.description && <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11, marginTop: 2 }}>{m.description}</p>}
                     <div className="flex gap-2 mt-1.5">
-                      {[{l:"P",v:m.protein,c:"#38BDF8"},{l:"C",v:m.carbs,c:"#818CF8"},{l:"F",v:m.fat,c:"#F472B6"}].map(n=>(
+                      {[{l:"P",v:m.protein,c:"#0284C7"},{l:"C",v:m.carbs,c:"#2563EB"},{l:"F",v:m.fat,c:"#E11D48"}].map(n=>(
                         <span key={n.l} style={{ fontSize: 9, color: n.c, fontWeight: 700 }}>{n.l}: {n.v}g</span>
                       ))}
                     </div>
                   </div>
-                  <span className="font-bold flex-shrink-0" style={{ color: "#FB923C", fontSize: 14 }}>{m.calories}</span>
+                  <span className="font-bold flex-shrink-0" style={{ color: "#D97706", fontSize: 14 }}>{m.calories}</span>
                 </div>
               )) : (
                 <button onClick={() => onModal("meal")}
@@ -384,8 +384,8 @@ export default function FitnessView({
       <div className="px-5 pt-10 pb-3 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Fitness</p>
-            <h1 className="text-stone-900 dark:text-stone-100 font-bold" style={{ fontSize: 22 }}>Your Fitness</h1>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Fitness</p>
+            <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Your Fitness</h1>
           </div>
         </div>
         

@@ -2,112 +2,131 @@
 
 :root {
   --font-size: 15px;
-  --background: #F9F8F6;
-  --foreground: #1C1917;
-  --card: rgba(255, 255, 255, 0.7);
-  --card-foreground: #1C1917;
-  --popover: rgba(255, 255, 255, 0.8);
-  --popover-foreground: #1C1917;
-  --primary: #6366F1;
+
+  /* ─── Electric Cobalt & Midnight Navy — Light Mode ─── */
+  --bg-primary: #F4F7FA;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --card-border: rgba(15, 23, 42, 0.08);
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --accent-primary: #2563EB;
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--card-bg);
+  --card-foreground: var(--text-primary);
+  --popover: rgba(255, 255, 255, 0.9);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-primary);
   --primary-foreground: #ffffff;
   --secondary: #ffffff;
-  --secondary-foreground: #78716C;
-  --muted: #F5F5F4;
-  --muted-foreground: #78716C;
-  --accent: #6366F1;
+  --secondary-foreground: var(--text-secondary);
+  --muted: #EEF2F7;
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--accent-primary);
   --accent-foreground: #ffffff;
-  --destructive: #ef4444;
+  --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.6);
-  --input: rgba(255, 255, 255, 0.5);
-  --input-background: rgba(255, 255, 255, 0.4);
-  --switch-background: #E7E5E4;
+  --border: var(--card-border);
+  --input: rgba(15, 23, 42, 0.08);
+  --input-background: rgba(255, 255, 255, 0.85);
+  --switch-background: #CBD5E1;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #6366F1;
-  --chart-1: #6366F1;
-  --chart-2: #10B981;
-  --chart-3: #F97316;
-  --chart-4: #3B82F6;
-  --chart-5: #6366F1;
+  --ring: var(--accent-primary);
+  --chart-1: #2563EB;
+  --chart-2: #059669;
+  --chart-3: #D97706;
+  --chart-4: #0284C7;
+  --chart-5: #7C3AED;
   --radius: 0.875rem;
-  --sidebar: #F5F5F4;
-  --sidebar-foreground: #1C1917;
-  --sidebar-primary: #6366F1;
+  --sidebar: #EEF2F7;
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--accent-primary);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #E7E5E4;
-  --sidebar-accent-foreground: #1C1917;
-  --sidebar-border: rgba(255, 255, 255, 0.6);
-  --sidebar-ring: #6366F1;
+  --sidebar-accent: #E2E8F0;
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--card-border);
+  --sidebar-ring: var(--accent-primary);
 
-  /* Entity palette */
-  --color-event: #3B82F6;
-  --color-task: #10B981;
-  --color-goal: #6366F1;
-  --color-workout: #F97316;
-  --color-meal: #F59E0B;
+  /* ─── Category Entity Accent Colors (Light) ─── */
+  --color-event: #2563EB;   /* Cobalt Blue */
+  --color-task: #0284C7;    /* Sky Blue / Sapphire */
+  --color-goal: #7C3AED;    /* Violet */
+  --color-workout: #E11D48; /* Crimson */
+  --color-meal: #D97706;    /* Amber */
+  --color-budget: #059669;  /* Emerald */
 
-  /* Glow colors (adjusted for light background) */
-  --glow-emerald: rgba(16, 185, 129, 0.3);
-  --glow-indigo: rgba(99, 102, 241, 0.3);
-  --glow-violet: rgba(99, 102, 241, 0.3);
-  --glow-rose: rgba(249, 115, 22, 0.3);
-  --glow-amber: rgba(245, 158, 11, 0.3);
-  --glow-gold: rgba(245, 158, 11, 0.25);
+  /* Glow colors (light mode — soft, diffused) */
+  --glow-event: rgba(37, 99, 235, 0.25);
+  --glow-task: rgba(2, 132, 199, 0.25);
+  --glow-goal: rgba(124, 58, 237, 0.25);
+  --glow-workout: rgba(225, 29, 72, 0.25);
+  --glow-meal: rgba(217, 119, 6, 0.25);
+  --glow-budget: rgba(5, 150, 105, 0.25);
 }
 
 .dark {
-  --background: #0A0D14;
-  --foreground: #e8e7f0;
-  --card: rgba(255, 255, 255, 0.03);
-  --card-foreground: #e8e7f0;
-  --popover: rgba(255, 255, 255, 0.04);
-  --popover-foreground: #e8e7f0;
-  --primary: #6366F1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e1e2c;
-  --secondary-foreground: #e8e7f0;
-  --muted: #1a1a26;
-  --muted-foreground: #8a8a9e;
-  --accent: #6366F1;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.05);
-  --input-background: rgba(255, 255, 255, 0.04);
-  --switch-background: #2a2a3c;
+  /* ─── Electric Cobalt & Midnight Navy — Dark Mode ─── */
+  --bg-primary: #0B0F19;
+  --card-bg: rgba(20, 29, 47, 0.70);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent-primary: #60A5FA;
+
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --card: var(--card-bg);
+  --card-foreground: var(--text-primary);
+  --popover: rgba(20, 29, 47, 0.85);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-primary);
+  --primary-foreground: #0B0F19;
+  --secondary: #141D2F;
+  --secondary-foreground: var(--text-primary);
+  --muted: #141D2F;
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--accent-primary);
+  --accent-foreground: #0B0F19;
+  --destructive: #F87171;
+  --destructive-foreground: #0B0F19;
+  --border: var(--card-border);
+  --input: rgba(255, 255, 255, 0.12);
+  --input-background: rgba(20, 29, 47, 0.7);
+  --switch-background: #1E293B;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #6366F1;
-  --chart-1: #6366F1;
-  --chart-2: #34d399;
-  --chart-3: #f472b6;
-  --chart-4: #fb923c;
-  --chart-5: #38bdf8;
-  --sidebar: #0f0f17;
-  --sidebar-foreground: #e8e7f0;
-  --sidebar-primary: #6366F1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a1a26;
-  --sidebar-accent-foreground: #e8e7f0;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #6366F1;
+  --ring: var(--accent-primary);
+  --chart-1: #60A5FA;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #38BDF8;
+  --chart-5: #A78BFA;
+  --sidebar: #0B0F19;
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--accent-primary);
+  --sidebar-primary-foreground: #0B0F19;
+  --sidebar-accent: #141D2F;
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--card-border);
+  --sidebar-ring: var(--accent-primary);
 
-  /* Entity palette */
-  --color-event: #6366F1;
-  --color-task: #10B981;
-  --color-goal: #8B5CF6;
-  --color-workout: #F43F5E;
-  --color-meal: #F59E0B;
+  /* ─── Category Entity Accent Colors (Dark Glow) ─── */
+  --color-event: #38BDF8;   /* Sky Glow */
+  --color-task: #60A5FA;    /* Sapphire Glow */
+  --color-goal: #A78BFA;    /* Violet Glow */
+  --color-workout: #FB7185; /* Crimson Glow */
+  --color-meal: #FBBF24;    /* Amber Glow */
+  --color-budget: #34D399;  /* Emerald Glow */
 
   /* Neon micro-glow colors (soft, diffused) */
-  --glow-emerald: rgba(16, 185, 129, 0.5);
-  --glow-indigo: rgba(99, 102, 241, 0.5);
-  --glow-violet: rgba(139, 92, 246, 0.5);
-  --glow-rose: rgba(244, 63, 94, 0.5);
-  --glow-amber: rgba(245, 158, 11, 0.5);
-  --glow-gold: rgba(245, 158, 11, 0.4);
+  --glow-event: rgba(56, 189, 248, 0.35);
+  --glow-task: rgba(96, 165, 250, 0.35);
+  --glow-goal: rgba(167, 139, 250, 0.35);
+  --glow-workout: rgba(251, 113, 133, 0.35);
+  --glow-meal: rgba(251, 191, 36, 0.35);
+  --glow-budget: rgba(52, 211, 153, 0.35);
 }
 
 @theme inline {
@@ -160,20 +179,21 @@
     @apply bg-background text-foreground;
     font-family: "Inter", sans-serif;
     margin: 0;
-    /* Off-white canvas with subtle warm ambient lights */
-    background-color: #FAF8F5;
+    /* Soft Ice Porcelain canvas with subtle cobalt ambient lights */
+    background-color: #F4F7FA;
     background:
-      radial-gradient(ellipse at top, rgba(251, 191, 36, 0.08), transparent 50%),
-      radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.05), transparent 55%),
-      radial-gradient(circle at 20% 75%, rgba(245, 158, 11, 0.04), transparent 50%),
-      radial-gradient(circle at 85% 80%, rgba(249, 115, 22, 0.03), transparent 50%);
+      radial-gradient(ellipse at top, rgba(37, 99, 235, 0.06), transparent 50%),
+      radial-gradient(circle at 50% 30%, rgba(2, 132, 199, 0.04), transparent 55%),
+      radial-gradient(circle at 20% 75%, rgba(124, 58, 237, 0.03), transparent 50%),
+      radial-gradient(circle at 85% 80%, rgba(5, 150, 105, 0.02), transparent 50%);
   }
 
   .dark body {
-    background-color: #0f0e0d;
+    background-color: #0B0F19;
     background:
-      radial-gradient(ellipse at top, rgba(251, 191, 36, 0.03), transparent 50%),
-      radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.02), transparent 55%);
+      radial-gradient(ellipse at top, rgba(96, 165, 250, 0.05), transparent 50%),
+      radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.03), transparent 55%),
+      radial-gradient(circle at 20% 75%, rgba(167, 139, 250, 0.02), transparent 50%);
   }
 
   html {
@@ -184,35 +204,35 @@
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
     line-height: 1.4;
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 
   h2 {
     font-size: var(--text-xl);
     font-weight: var(--font-weight-medium);
     line-height: 1.4;
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
     line-height: 1.4;
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 
   h4 {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 
   label {
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
-    @apply text-stone-700;
+    @apply text-slate-700 dark:text-slate-300;
   }
 
   button {
@@ -234,83 +254,155 @@
 
   /* Core Glass Card — standardized glassmorphism */
   .glass-card {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md shadow-lg shadow-stone-200/50 dark:bg-stone-900/60 dark:border-white/10 dark:shadow-black/20;
+    @apply rounded-2xl border backdrop-blur-md shadow-lg;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
     transition: all 0.2s ease;
+  }
+
+  .dark .glass-card {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
 
   .glass-card-interactive {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md shadow-lg shadow-stone-200/50 dark:bg-stone-900/60 dark:border-white/10 dark:shadow-black/20;
+    @apply rounded-2xl border backdrop-blur-md shadow-lg;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
     transition: all 0.2s ease;
   }
 
+  .dark .glass-card-interactive {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
   .glass-card-interactive:hover {
-    @apply bg-white/90 shadow-xl dark:bg-stone-800/70;
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.1);
+  }
+
+  .dark .glass-card-interactive:hover {
+    background-color: rgba(30, 41, 59, 0.85);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   /* Glass Panel — for sections and containers */
   .glass-panel {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md shadow-lg shadow-stone-200/50 dark:bg-stone-900/60 dark:border-white/10 dark:shadow-black/20;
+    @apply rounded-2xl border backdrop-blur-md shadow-lg;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
     transition: all 0.2s ease;
+  }
+
+  .dark .glass-panel {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
 
   .glass-panel-interactive {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md shadow-lg shadow-stone-200/50 dark:bg-stone-900/60 dark:border-white/10 dark:shadow-black/20;
+    @apply rounded-2xl border backdrop-blur-md shadow-lg;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
     transition: all 0.2s ease;
   }
 
+  .dark .glass-panel-interactive {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
   .glass-panel-interactive:hover {
-    @apply bg-white/90 shadow-xl dark:bg-stone-800/70;
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.1);
+  }
+
+  .dark .glass-panel-interactive:hover {
+    background-color: rgba(30, 41, 59, 0.85);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   /* Frosted glass header */
   .glass-header {
-    @apply border-b border-white/60 bg-white/80 backdrop-blur-md dark:bg-stone-900/80 dark:border-white/10;
+    @apply border-b backdrop-blur-md;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: var(--card-border);
+  }
+
+  .dark .glass-header {
+    background-color: rgba(20, 29, 47, 0.8);
   }
 
   /* Sticky frosted header */
   .sticky-header {
-    @apply sticky top-0 z-20 border-b border-white/60 bg-white/80 backdrop-blur-md dark:bg-stone-900/80 dark:border-white/10;
+    @apply sticky top-0 z-20 border-b backdrop-blur-md;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-color: var(--card-border);
+  }
+
+  .dark .sticky-header {
+    background-color: rgba(20, 29, 47, 0.8);
   }
 
   /* Glass modal shell */
   .glass-modal {
-    @apply rounded-3xl border border-white/60 bg-white/90 backdrop-blur-md dark:bg-stone-900/90 dark:border-white/10;
+    @apply rounded-3xl border backdrop-blur-md;
+    background-color: rgba(255, 255, 255, 0.92);
+    border-color: var(--card-border);
+  }
+
+  .dark .glass-modal {
+    background-color: rgba(20, 29, 47, 0.92);
   }
 
   /* Glass surface for overlays and menus */
   .glass-overlay {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md dark:bg-stone-900/70 dark:border-white/10;
+    @apply rounded-2xl border backdrop-blur-md;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
   }
 
   .glass-overlay-interactive {
-    @apply rounded-2xl border border-white/60 bg-white/70 backdrop-blur-md dark:bg-stone-900/70 dark:border-white/10;
+    @apply rounded-2xl border backdrop-blur-md;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
     transition: all 0.2s ease;
   }
 
   .glass-overlay-interactive:hover {
-    @apply bg-white/90 shadow-xl dark:bg-stone-800/70;
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.1);
+  }
+
+  .dark .glass-overlay-interactive:hover {
+    background-color: rgba(30, 41, 59, 0.85);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   /* ─── Neon micro-glow badges ─── */
 
-  .neon-badge-emerald {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  .neon-badge-event {
+    box-shadow: 0 0 20px var(--glow-event);
   }
 
-  .neon-badge-indigo {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  .neon-badge-task {
+    box-shadow: 0 0 20px var(--glow-task);
   }
 
-  .neon-badge-violet {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  .neon-badge-goal {
+    box-shadow: 0 0 20px var(--glow-goal);
   }
 
-  .neon-badge-rose {
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+  .neon-badge-workout {
+    box-shadow: 0 0 20px var(--glow-workout);
   }
 
-  .neon-badge-amber {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+  .neon-badge-meal {
+    box-shadow: 0 0 20px var(--glow-meal);
+  }
+
+  .neon-badge-budget {
+    box-shadow: 0 0 20px var(--glow-budget);
   }
 
   /* ─── Hover micro-interactions ─── */
@@ -322,11 +414,11 @@
   /* ─── Tech typography ─── */
 
   .heading-tech {
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 
   .hud-label {
-    @apply text-[10px] uppercase tracking-widest text-stone-500 font-mono;
+    @apply text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-mono;
   }
 
   /* Micro-interaction button base */
@@ -340,62 +432,96 @@
   .text-goal { color: var(--color-goal); }
   .text-workout { color: var(--color-workout); }
   .text-meal { color: var(--color-meal); }
+  .text-budget { color: var(--color-budget); }
 
   /* Entity color background tints (10% opacity) */
-  .bg-event-10 { background-color: rgba(59, 130, 246, 0.1); }
-  .bg-task-10 { background-color: rgba(16, 185, 129, 0.1); }
-  .bg-goal-10 { background-color: rgba(99, 102, 241, 0.1); }
-  .bg-workout-10 { background-color: rgba(249, 115, 22, 0.1); }
-  .bg-meal-10 { background-color: rgba(245, 158, 11, 0.1); }
+  .bg-event-10 { background-color: color-mix(in srgb, var(--color-event) 10%, transparent); }
+  .bg-task-10 { background-color: color-mix(in srgb, var(--color-task) 10%, transparent); }
+  .bg-goal-10 { background-color: color-mix(in srgb, var(--color-goal) 10%, transparent); }
+  .bg-workout-10 { background-color: color-mix(in srgb, var(--color-workout) 10%, transparent); }
+  .bg-meal-10 { background-color: color-mix(in srgb, var(--color-meal) 10%, transparent); }
+  .bg-budget-10 { background-color: color-mix(in srgb, var(--color-budget) 10%, transparent); }
 
   /* Card hover highlight — glass lift */
   .card-hover {
     @apply transition-all duration-300 hover:border-white/60 hover:bg-white/90 hover:shadow-xl hover:-translate-y-0.5;
   }
 
-  /* Entity type pill badges — enhanced with glow on hover */
+  /* ─── Entity type pill badges — enhanced with glow on hover ─── */
   .pill-event {
     @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
-    background: rgba(59, 130, 246, 0.15);
-    color: #3B82F6;
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: color-mix(in srgb, var(--color-event) 15%, transparent);
+    color: var(--color-event);
+    border: 1px solid color-mix(in srgb, var(--color-event) 30%, transparent);
   }
 
   .pill-task {
     @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
-    background: rgba(16, 185, 129, 0.15);
-    color: #10B981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: color-mix(in srgb, var(--color-task) 15%, transparent);
+    color: var(--color-task);
+    border: 1px solid color-mix(in srgb, var(--color-task) 30%, transparent);
   }
 
   .pill-goal {
     @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
-    background: rgba(99, 102, 241, 0.15);
-    color: #6366F1;
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: color-mix(in srgb, var(--color-goal) 15%, transparent);
+    color: var(--color-goal);
+    border: 1px solid color-mix(in srgb, var(--color-goal) 30%, transparent);
   }
 
   .pill-workout {
     @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
-    background: rgba(249, 115, 22, 0.15);
-    color: #F97316;
-    border: 1px solid rgba(249, 115, 22, 0.3);
+    background: color-mix(in srgb, var(--color-workout) 15%, transparent);
+    color: var(--color-workout);
+    border: 1px solid color-mix(in srgb, var(--color-workout) 30%, transparent);
   }
 
   .pill-meal {
     @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
-    background: rgba(245, 158, 11, 0.15);
-    color: #F59E0B;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: color-mix(in srgb, var(--color-meal) 15%, transparent);
+    color: var(--color-meal);
+    border: 1px solid color-mix(in srgb, var(--color-meal) 30%, transparent);
+  }
+
+  .pill-budget {
+    @apply text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-300;
+    background: color-mix(in srgb, var(--color-budget) 15%, transparent);
+    color: var(--color-budget);
+    border: 1px solid color-mix(in srgb, var(--color-budget) 30%, transparent);
+  }
+
+  /* ─── Entity visual differentiation ─── */
+
+  /* Calendar Events: solid time-block with prominent left accent bar */
+  .entity-event-block {
+    @apply rounded-xl border backdrop-blur-md;
+    background-color: color-mix(in srgb, var(--color-event) 12%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--color-event) 25%, transparent);
+    border-left: 4px solid var(--color-event);
+  }
+
+  /* Timed Tasks: floating glass card with circular checkbox */
+  .entity-task-card {
+    @apply rounded-xl border backdrop-blur-md;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    border-left: 3px solid var(--color-task);
+  }
+
+  /* Goals: violet accent with streak indicator */
+  .entity-goal-card {
+    @apply rounded-xl border backdrop-blur-md;
+    background-color: color-mix(in srgb, var(--color-goal) 8%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--color-goal) 25%, transparent);
   }
 
   /* Metadata styling */
   .meta-text {
-    @apply text-xs text-stone-500 font-medium;
+    @apply text-xs text-slate-500 dark:text-slate-400 font-medium;
   }
 
   /* Heading styling */
   .heading-tight {
-    @apply tracking-tight font-bold text-stone-900;
+    @apply tracking-tight font-bold text-slate-900 dark:text-slate-50;
   }
 }

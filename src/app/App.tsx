@@ -64,11 +64,12 @@ export const DEFAULT_GROUPS: Group[] = [
 
 // ─── Entity Palette ─────────────────────────────────────────────────────────────
 export const ENTITY_COLORS = {
-  event:   "#6366F1", // Electric Indigo
-  task:    "#10B981", // Emerald Green
-  goal:    "#8B5CF6", // Radiant Violet
-  workout: "#F43F5E", // Sunset Rose
-  meal:    "#F59E0B", // Warm Amber
+  event:   "#2563EB", // Cobalt Blue
+  task:    "#0284C7", // Sky Blue / Sapphire
+  goal:    "#7C3AED", // Violet
+  workout: "#E11D48", // Crimson
+  meal:    "#D97706", // Amber
+  budget:  "#059669", // Emerald
 } as const;
 export type EntityType = keyof typeof ENTITY_COLORS;
 
@@ -128,10 +129,10 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-export const inputCls = "w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 backdrop-blur-md transition-all duration-200 focus:border-stone-300 focus:bg-white";
-export const inputSty = { backgroundColor: "rgba(255,255,255,.8)", caretColor: "#6366F1" } as React.CSSProperties;
-export const labelSty = { color: "#78716C", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
-export const cardSty  = { backgroundColor: "rgba(255,255,255,.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,.6)" } as React.CSSProperties;
+export const inputCls = "w-full rounded-xl px-4 py-3 text-slate-900 dark:text-slate-50 text-sm outline-none border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md transition-all duration-200 focus:border-slate-300 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-800";
+export const inputSty = { backgroundColor: "rgba(255,255,255,.8)", caretColor: "#2563EB" } as React.CSSProperties;
+export const labelSty = { color: "#475569", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
+export const cardSty  = { backgroundColor: "rgba(255,255,255,.85)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(15,23,42,.08)" } as React.CSSProperties;
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -317,10 +318,10 @@ function ModalShell({ title, onClose, children }: { title: string; onClose: () =
           <div className="w-10 h-1 rounded-full dark:bg-white/10 bg-black/15" />
         </div>
         <div className="flex items-center justify-between px-5 pt-3 pb-3">
-          <h2 className="dark:text-stone-100 text-stone-900 font-bold text-base">{title}</h2>
+          <h2 className="dark:text-slate-50 text-slate-900 font-bold text-base">{title}</h2>
           <button onClick={onClose} className="w-7 h-7 rounded-full flex items-center justify-center dark:bg-white/10"
             style={{ backgroundColor: "rgba(0,0,0,.08)" }}>
-            <X size={13} className="dark:text-stone-400 text-stone-700" />
+            <X size={13} className="dark:text-slate-400 text-slate-700" />
           </button>
         </div>
         <div className="px-5 pb-8 overflow-y-auto space-y-4" style={{ maxHeight: "82vh", scrollbarWidth: "none" }}>
@@ -337,8 +338,8 @@ function InfoRow({ icon, label, children }: { icon: string; label: string; child
       <div className="flex items-start gap-3">
         <span style={{ fontSize: 14, lineHeight: 1 }}>{icon}</span>
         <div>
-          <p className="dark:text-stone-400" style={{ fontSize: 9, fontWeight: 700, color: "#78716C", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>{label}</p>
-          <p className="dark:text-stone-100 text-stone-900 text-sm" style={{ lineHeight: 1.5 }}>{children}</p>
+          <p className="dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>{label}</p>
+          <p className="dark:text-slate-50 text-slate-900 text-sm" style={{ lineHeight: 1.5 }}>{children}</p>
         </div>
       </div>
     </div>
@@ -370,20 +371,24 @@ function Timeline({ items, nowMin, onItemClick }: { items: TLItem[]; nowMin?: nu
         const top = item.startMin - TL_START;
         const height = Math.max(item.endMin - item.startMin, 26);
         const isTask = item.type === "task";
-        const isSolid = item.type === "event" || item.type === "workout";
+        const isEvent = item.type === "event";
+        const isWorkout = item.type === "workout";
+        const isSolid = isEvent || isWorkout;
         return (
           <div key={item.id} onClick={onItemClick ? () => onItemClick(item.id, item.type) : undefined}
+            className={isTask ? "entity-task-card" : isEvent ? "entity-event-block" : undefined}
             style={{
               position: "absolute", top, height,
               left: `calc(44px + ${item.col / item.totalCols} * (100% - 44px))`,
               width: `calc(${1 / item.totalCols} * (100% - 44px) - 3px)`,
-              backgroundColor: isSolid ? `${item.color}1E` : "transparent",
-              border: !isSolid ? `1.5px solid ${item.color}55` : "none",
-              borderLeft: `3px solid ${item.color}`,
+              backgroundColor: isSolid ? `color-mix(in srgb, ${item.color} 14%, var(--card-bg))` : "var(--card-bg)",
+              border: isTask ? `1px solid var(--card-border)` : isEvent ? `1px solid color-mix(in srgb, ${item.color} 30%, transparent)` : `1px solid color-mix(in srgb, ${item.color} 30%, transparent)`,
+              borderLeft: isEvent ? `4px solid ${item.color}` : isTask ? `3px solid ${item.color}` : `3px solid ${item.color}`,
               borderRadius: 10,
               opacity: item.done ? 0.45 : 1,
               overflow: "hidden",
               cursor: onItemClick ? "pointer" : "default",
+              boxShadow: isTask ? "0 2px 12px rgba(15,23,42,.08)" : "none",
             }}>
             <div className="flex items-center h-full px-2 py-1 gap-1.5">
               {isTask && (
@@ -393,15 +398,21 @@ function Timeline({ items, nowMin, onItemClick }: { items: TLItem[]; nowMin?: nu
                 </div>
               )}
               <div className="flex flex-col justify-center flex-1 min-w-0">
-                <p className="text-xs font-semibold leading-tight truncate"
-                  style={{ color: item.done ? item.color : "#EEEEF8", textDecoration: item.done ? "line-through" : "none" }}>
+                <p className="text-xs font-semibold leading-tight truncate text-slate-900 dark:text-slate-50"
+                  style={{ color: item.done ? item.color : undefined, textDecoration: item.done ? "line-through" : "none" }}>
                   {item.title}
                 </p>
                 {height > 32 && item.subtitle && (
                   <p style={{ fontSize: 9, color: item.color, opacity: 0.72, lineHeight: 1.3 }}>{item.subtitle}</p>
                 )}
-                {height > 44 && (
-                  <p style={{ fontSize: 9, color: "#4A4A6A" }}>{m2d(item.startMin)} – {m2d(item.endMin)}</p>
+                {/* Events always show explicit time ranges */}
+                {isEvent && (
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 600 }}>
+                    {m2d(item.startMin)} – {m2d(item.endMin)}
+                  </p>
+                )}
+                {!isEvent && height > 44 && (
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{m2d(item.startMin)} – {m2d(item.endMin)}</p>
                 )}
               </div>
             </div>
@@ -460,8 +471,8 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-3 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>Calendar</p>
-          <h1 className="text-stone-900 font-bold" style={{ fontSize: 18 }}>{MF[month]} {year}</h1>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>Calendar</p>
+          <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>{MF[month]} {year}</h1>
         </div>
         <div className="flex gap-1.5 mb-1">
           {[{ Icon: ChevronLeft, delta: -1 }, { Icon: ChevronRight, delta: 1 }].map(({ Icon, delta }) => (
@@ -498,18 +509,39 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
             const isPast = dKey(d) < dKey(todayDate());
             return (
               <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
-                className="aspect-square rounded-xl flex flex-col items-center justify-center"
-                style={{ backgroundColor: color ? `${color}15` : "rgba(0,0,0,.02)", outline: isSel ? "2px solid #6366F1" : isTod && !isSel ? "1px solid rgba(99,102,241,.3)" : "none" }}>
-                <span style={{ fontSize: 13, fontWeight: isSel || isTod ? 700 : 500, color: isSel ? "#6366F1" : isPast ? "rgba(28,25,23,.3)" : "#1C1917" }}>
+                className={[
+                  "aspect-square rounded-xl flex flex-col items-center justify-center transition-colors",
+                  isSel ? "bg-indigo-500 text-white ring-2 ring-indigo-500" :
+                  info?.level === "busy" ? "bg-rose-500/10 dark:bg-rose-500/20" :
+                  info?.level === "moderate" ? "bg-amber-500/10 dark:bg-amber-500/20" :
+                  info?.level === "light" ? "bg-emerald-500/10 dark:bg-emerald-500/20" :
+                  "bg-slate-100/60 dark:bg-white/5",
+                  !isSel && isTod ? "ring-1 ring-indigo-400/30" : "",
+                ].join(" ")}>
+                <span className={[
+                  "text-[13px]",
+                  isSel || isTod ? "font-bold" : "font-medium",
+                  isSel ? "text-white" :
+                  isPast ? "text-slate-400 dark:text-slate-600" :
+                  "text-slate-900 dark:text-slate-100",
+                ].join(" ")}>
                   {day}
                 </span>
                 {info?.totalTasks ? (
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(0,0,0,.05)", color: color ?? "#1C1917" }}>
+                    <span className={[
+                      "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                      isSel ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/10 text-slate-900 dark:text-slate-100",
+                    ].join(" ")}>
                       {info.totalTasks} Tasks
                     </span>
                     {info.combinedHours > 0 && (
-                      <span style={{ fontSize: 10, color: "#78716C", fontWeight: 700 }}>{info.combinedHours.toFixed(1)}h</span>
+                      <span className={[
+                        "text-[10px] font-bold",
+                        isSel ? "text-white/80" : "text-slate-500 dark:text-slate-400",
+                      ].join(" ")}>
+                        {info.combinedHours.toFixed(1)}h
+                      </span>
                     )}
                   </div>
                 ) : (
@@ -537,8 +569,8 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-10 pb-3 flex-shrink-0 flex items-end justify-between">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4E4E72" }}>Goals & Habits</p>
-          <h1 className="text-white font-bold" style={{ fontSize: 18 }}>Your Goals</h1>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Goals & Habits</p>
+          <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>Your Goals</h1>
         </div>
         <div className="flex gap-2 mb-1">
           <button onClick={() => onModal("groups")} className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -565,11 +597,11 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
           const c = gColor(groups, g.groupId);
           const todayLogged = goalLogs.some(l => l.goalId === g.id && l.date === dKey(today));
           return (
-            <div key={g.id} onClick={() => onDetail("goal", g.id)} className="rounded-2xl p-4 bg-white/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 text-stone-900 dark:text-stone-100" style={{ cursor: "pointer", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+            <div key={g.id} onClick={() => onDetail("goal", g.id)} className="rounded-2xl p-4 bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-50" style={{ cursor: "pointer", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm">{g.title}</p>
-                  <p className="text-stone-400 dark:text-stone-400" style={{ fontSize: 10, marginTop: 2 }}>{g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}</p>
+                  <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm">{g.title}</p>
+                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 2 }}>{g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                   {g.groupId && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${c}20`, color: c }}>{gName(groups, g.groupId)}</span>}
@@ -1482,8 +1514,8 @@ function BottomNav({ screen, onChange, onAccountClick, onAddClick, username }: {
   }, [pageMenuOpen]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3 bg-gradient-to-t from-[#FAF8F5] via-stone-200/60 to-transparent dark:from-[#0f0e0d] dark:via-stone-950/80">
-      <div className="relative flex items-center justify-around rounded-2xl px-1 py-2 bg-white/80 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-sm dark:shadow-black/20 z-30">
+    <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3 bg-gradient-to-t from-[#F4F7FA] via-slate-200/60 to-transparent dark:from-[#0B0F19] dark:via-slate-900/80">
+      <div className="relative flex items-center justify-around rounded-2xl px-1 py-2 bg-white/80 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 z-30">
         {/* Left: Account */}
         <button key="account" onClick={() => { setPageMenuOpen(false); onAccountClick(); }}
           className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
@@ -1574,6 +1606,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [showWorkoutOverlay, setShowWorkoutOverlay] = useState(false);
   const [detailItem, setDetailItem] = useState<{ kind: DetailKind; id: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [untimedOpen, setUntimedOpen] = useState(true);
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -1740,8 +1773,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5] dark:bg-[#0f0e0d]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div className="relative w-full max-w-sm overflow-hidden bg-[#FAF8F5] dark:bg-[#0f0e0d]"
+    <div className="min-h-screen flex items-center justify-center bg-[#F4F7FA] dark:bg-[#0B0F19]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="relative w-full max-w-sm overflow-hidden bg-[#F4F7FA] dark:bg-[#0B0F19]"
         style={{ height: "100dvh", maxHeight: 900, boxShadow: "0 0 60px rgba(0,0,0,.08)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
@@ -1785,21 +1818,36 @@ export default function App({ userId, username, onSignOut }: AppProps) {
                       )}
 
                       {untimedTasks.length > 0 && (
-                        <div className="mt-3">
-                          <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#3A3A5A" }}>Due</p>
-                          {untimedTasks.map(t => (
-                            <div key={t.id} className="rounded-xl p-3 mt-2" style={{ ...cardSty }}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white font-semibold text-sm">{t.title}</p>
+                        <div className="mt-3 rounded-2xl border backdrop-blur-md" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--card-border)" }}>
+                          <button
+                            onClick={() => setUntimedOpen(!untimedOpen)}
+                            className="w-full flex items-center justify-between px-4 py-3"
+                          >
+                            <span className="text-slate-900 dark:text-slate-50 font-bold text-sm">Due Today (Anytime)</span>
+                            <span className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--color-task) 15%, transparent)", color: "var(--color-task)" }}>
+                                {untimedTasks.length}
+                              </span>
+                              <ChevronDown size={14} className={`text-slate-500 dark:text-slate-400 transition-transform duration-200 ${untimedOpen ? "rotate-180" : ""}`} />
+                            </span>
+                          </button>
+                          {untimedOpen && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {untimedTasks.map(t => (
+                                <div key={t.id} className="entity-task-card rounded-xl p-3" style={{ cursor: "pointer" }} onClick={() => openDetail("task", t.id)}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm">{t.title}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
+                                      {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>{gName(groups, t.groupId)}</span>}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
-                                  {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>{gName(groups, t.groupId)}</span>}
-                                </div>
-                              </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
                       )}
                     </div>

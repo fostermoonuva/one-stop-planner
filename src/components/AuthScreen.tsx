@@ -41,7 +41,7 @@ export function AuthScreen({
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 bg-[#FAF8F5] dark:bg-stone-950"
+      className="min-h-screen flex items-center justify-center px-4 bg-[#F4F7FA] dark:bg-[#0B0F19]"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <div

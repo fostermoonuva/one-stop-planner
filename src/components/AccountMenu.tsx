@@ -31,13 +31,13 @@ export function AccountMenu({
           <div className="w-10 h-1 rounded-full dark:bg-white/10 bg-black/15" />
         </div>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="dark:text-stone-100 text-stone-900 font-bold text-base">Account</h2>
+          <h2 className="dark:text-slate-50 text-slate-900 font-bold text-base">Account</h2>
           <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/8"
           >
-            <X size={14} className="dark:text-stone-400 text-stone-700" />
+            <X size={14} className="dark:text-slate-400 text-slate-700" />
           </button>
         </div>
 
