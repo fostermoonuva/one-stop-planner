@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dumbbell, Utensils, ChevronLeft, ChevronRight, Plus, Play } from "lucide-react";
+import { Dumbbell, Utensils, ChevronLeft, ChevronRight, Plus, Play, Calendar } from "lucide-react";
 import type { CalMeal, CalWorkout, ActiveWO, MealType } from "../app/App";
 import { dKey, addDays, isToday, t2m, m2d, fmtT, MF } from "../app/App";
 
@@ -159,11 +159,17 @@ function WorkoutsSubView({
           <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Training</p>
           <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Workouts</h1>
         </div>
-        <button onClick={() => onModal("startWorkout")}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-full font-bold text-sm"
-          style={{ background: "linear-gradient(135deg,#F43F5E,#f97316)", color: "#fff" }}>
-          <Play size={13} fill="currentColor" /> Start
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => onModal("startWorkout")}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-full font-bold text-xs"
+            style={{ background: "linear-gradient(135deg,#F43F5E,#f97316)", color: "#fff" }}>
+            <Play size={12} fill="currentColor" /> Start
+          </button>
+          <button onClick={() => onModal("startWorkout")} // In a real app, this might open a specialized "Past Workout" modal
+            className="flex items-center gap-2 px-3 py-2.5 rounded-full font-bold text-xs bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+            <Calendar size={12} /> + Past
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-3" style={{ scrollbarWidth: "none" }}>

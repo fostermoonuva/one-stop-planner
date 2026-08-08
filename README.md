@@ -47,17 +47,20 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Entity | Main fields |
 |--------|-------------|
-| **Events** | Title, start/end date & time, optional repeat days, group, notes |
-| **Tasks** | Title, due date/time, optional repeat, group, notes, done flag, **subtasks** |
+| **Events** | Title, start/end date & time, optional repeat days, group, notes, **alert option + computed alert timestamp** |
+| **Tasks** | Title, due date/time, optional repeat, group, notes, done flag, **subtasks**, **alert option** |
 | **Subtasks** | Title, optional due date, done flag (nested under a task) |
 | **Meals** | Name, type (breakfast/lunch/dinner/snack), date/time, calories, protein/carbs/fat |
 | **Workouts** | Name, date, start/end time, exercises with sets (weight, reps, done) |
 | **Goals** | Title, days of week, amount + unit (times/minutes), group |
 | **Goal logs** | Per goal + date when completed |
 | **Groups** | Named color tags (School, Work, Personal, Fitness, Food, Wellness by default) |
-| **Active workout** | In-progress session (name, start time, live exercises/sets) |
+| **Active workout** | In-progress session (name, start time, live exercises/sets, optional custom date/time override) |
 | **Budget categories** | Name, color, monthly spending cap |
-| **Budget transactions** | Category, amount, description, date, type (expense/income) |
+| **Budget transactions** | Category, amount, description, date, type (expense/income), account, payment method (debit/credit/cash), credit card paid status, flow type (spending/saving/investing/income) |
+| **Accounts** | Name, type (checking/credit/cash/hysa/investment), current balance |
+| **Notification settings** | Per-user default alert rules (event default timing, task default timing, goal daily reminder time, budget alert toggles) |
+| **Alert notifications** | Scheduled push notification queue (item type, item ID, alert timestamp, title, body, deep link, sent status) |
 
 ---
 
@@ -96,8 +99,14 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Feature | Description |
 |---------|-------------|
 | Month calendar | Navigate months with chevrons |
+| Grid styling | Day number pinned **top-right** of each cell; centered task-count pill + workload hours indicator |
+| Auto-resizing cells | `min-h` flex cells grow so the date, task badge, and workload indicators never clip or overflow |
 | Workload colors | Green → yellow → red by event+task count that day |
 | Legend | Light / Moderate / Busy |
+| Day drill-down | Tap any date cell to open a **Daily View** bottom sheet |
+| 24-hour timeline | Scrollable 12:00 AM → 11:59 PM schedule; **auto-scrolls so 9:00 AM is at the top** (you can still scroll up to see 12 AM–8:59 AM) |
+| Day Tasks list | Dedicated section in the day sheet listing all tasks due that date (timed + anytime) |
+| Upcoming feed | "Upcoming Events & Tasks" list below the grid — chronological, with date tile, title, and Event/Task type badge; labels use "Today" / "Tomorrow" / "Aug 12" |
 | Day select | Tap a day to set the selected date (used by Today / Meal) |
 | Dark mode legibility | Day numbers use `text-slate-100` in dark mode; busy/moderate/light cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable |
 
@@ -108,6 +117,9 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | | Sub-navigation | Toggle between "Workouts" and "Nutrition" sub-views |
 | | Cross-domain banner | Today's workout status + nutrition calorie/macro rings |
 | | Workouts | Start workout, active overlay, history with duration/exercises/volume |
+| | Strong-style Editing | Edit sets (weight, reps, type), add/delete sets, and reorder exercises mid-session |
+| | Set Types | Support for Normal, Warmup, Drop Set, and Failure set types |
+| | Past Workouts | Retroactive logging with custom Date and Time overrides |
 | | Nutrition | Day navigation, daily totals (calories + protein/carbs/fat), meal type sections |
 | | Log meal | Name, description, type, date/time, macros |
 | | Empty slots | "+ Log {type}" dashed buttons |
@@ -122,16 +134,24 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Log meal | Name, description, type, date/time, macros |
 | Empty slots | "+ Log {type}" dashed buttons |
 
-### Budget (new)
+### Budget
 
 | Feature | Description |
 |---------|-------------|
-| | Monthly summary | Income, expenses, and net balance for current month |
-| | Category budgets | Create categories with custom colors and monthly spending caps |
-| | Progress bars | Visual spending progress per category (red when over cap) |
-| | Transactions | Log expenses and income with category, amount, description, date |
-| | Filter by category | View all transactions or filter by specific category |
-| | Delete | Remove categories and transactions |
+| **Month navigation** | Flip through months with prev/next arrows to view historical or plan future budgets |
+| **Monthly summary** | Income, expenses, net balance, daily spending rate, and projected month total |
+| **Pace indicator** | On Track / Near Limit / Over Budget status based on spending rate vs. budget |
+| **Multi-account management** | Add/manage multiple accounts (Checking, HYSA, Credit Cards, Cash, Investment) with live balance tracking |
+| **Account balances** | Auto-updated based on transactions; shows total liquid net worth |
+| **Category budgets** | Create categories with custom colors and monthly spending caps |
+| **Progress bars** | Visual spending progress per category (red when over cap) |
+| **Over-spending alerts** | Automatic flags for categories exceeding their budget |
+| **Transactions** | Log expenses/income with category, amount, description, date, account, payment method, and flow type |
+| **Payment method tagging** | Tag transactions as Debit Card, Credit Card, or Cash |
+| **Credit card tracking** | Mark credit card charges as Paid/Unpaid; visual badges show settlement status |
+| **Flow type classification** | Tag transactions as Pure Spending, Saving, Investing, or Income with color-coded badges |
+| **Wealth projections** | Interactive 1/3/5/10-year net worth projections based on current balances, average surplus, and compound growth |
+| **Delete** | Remove categories, transactions, and accounts |
 
 ### Goals
 
@@ -168,6 +188,20 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Sign in | Username + password |
 | Sign up | Username + password + confirm |
 | Setup gate | If env vars missing, shows "Supabase not configured" help |
+
+### Notifications & Alerts
+
+| Feature | Description |
+|---------|-------------|
+| **Default alert rules** | Configurable per-category notification preferences in Account Settings (Account → Default Alert Rules) |
+| **Event alerts** | Dropdown selector: None, At time of event, 5/15/30 mins before, 1 hour before, 1 day before |
+| **Task alerts** | Dropdown selector: None, At due time, 15 mins before, 1 hour before, 9:00 AM on due date |
+| **Goal daily reminders** | Time picker for daily check-in reminder (e.g., "Remind me daily at 8:00 PM") |
+| **Budget alerts** | Toggle switches for 80% category limit warnings and upcoming recurring bill reminders (1 day before) |
+| **Per-item overrides** | When creating/editing events or tasks, the "Remind Me" selector pre-fills from your default but can be overridden or set to "None" |
+| **Scheduled push queue** | Alert notifications are stored in `alert_notifications` table with computed `alert_timestamp` |
+| **Background delivery** | Vercel Cron job runs every minute to query pending alerts (`alert_timestamp <= NOW() AND sent = false`) and sends Web Push notifications to active subscriptions |
+| **Deep linking** | Push notifications include deep-link destination URLs to open the relevant item in the app |
 
 ---
 
@@ -282,6 +316,9 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
+- **Customizable Default Notification Alert Rules** — implemented a complete notification system with per-user default alert preferences stored in `user_notification_settings` table. Account Settings now includes a "Default Alert Rules" section with event timing dropdowns (None/At time/5/15/30 mins/1 hour/1 day before), task timing dropdowns (None/At due/15 mins/1 hour/9 AM on due date), goal daily reminder time picker, and budget alert toggles (80% limit warning, upcoming bills reminder). Event and Task creation modals pre-fill the "Remind Me" selector from the user's saved defaults but allow per-item overrides. Backend includes a Vercel Cron job (`/api/cron/send-alerts`) that runs every minute to process pending alerts from the `alert_notifications` queue and deliver Web Push notifications with deep-link URLs. Alert timestamps are computed client-side and stored alongside event/task data.
+- **Strong-style Workout Tracking & Historical Logging** — upgraded the workout tracking system to support mid-session editing. Users can now edit weight, reps, and set types (Normal, Warmup, Drop Set, Failure), delete sets, and reorder exercises while a workout is active. Added support for retroactive logging with custom Date and Time overrides, ensuring workouts appear correctly in history and calendar views regardless of when they are logged.
+- **Calendar View refactor** — redesigned the Month grid so the day number is pinned to the **top-right** of each cell with a centered task-count pill + workload hours; grid cells auto-resize (`min-h` flex) to avoid clipping. Clicking any day opens a **Daily View** bottom sheet with a full 24-hour timeline that **auto-scrolls to 9:00 AM** (you can still scroll up to see 12 AM), plus a **Day Tasks** list. Added an **"Upcoming Events & Tasks"** feed below the grid with a chronological list of next occurrences (date tile, title, Event/Task badge, and "Today"/"Tomorrow"/"Aug 12" labels).
 - **Floating dock bottom navigation** — converted the bottom bar into a compact, centered, floating dock: frosted-glass pill shell (`bg-slate-900/85 backdrop-blur-xl border-slate-800/80 shadow-2xl rounded-full`), 40px indigo-tinted account avatar with border, frosted pill-shaped current-tab selector (`px-5 py-2.5 bg-slate-800/80`), and a solid indigo + button with glow (`shadow-indigo-500/30`).
 - **Calendar dark mode legibility fix** — Month view day numbers now use `text-slate-100` in dark mode (was hardcoded dark `#1C1917`), out-of-month/past days use `text-slate-600`, selected days use high-contrast `text-white` on an indigo fill, and busy/moderate/light workload cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable in both themes.
 - **Electric Cobalt & Midnight Navy theme system** — complete UI refactor to high-contrast modern theme with dynamic Light/Dark mode tokens (`--bg-primary`, `--card-bg`, `--text-primary`, `--accent-primary`), frosted glassmorphism on all cards, entity-specific accent colors (Events=Cobalt Blue, Tasks=Sky/Sapphire, Goals=Violet, Fitness=Crimson, Meals=Amber, Budget=Emerald), strict visual differentiation between events (solid time-blocks, no checkboxes), timed tasks (floating glass cards with circular checkboxes + due-time badges), and untimed tasks (collapsible "Due Today (Anytime)" section). Removed hardcoded colors in favor of dynamic `text-slate-900 dark:text-slate-50` / `text-slate-600 dark:text-slate-400` utilities for WCAG AA/AAA legibility.

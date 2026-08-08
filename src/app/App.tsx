@@ -3,21 +3,24 @@ import {
   Home, BarChart3, Utensils, Target,
   Plus, X, Check, ChevronLeft, ChevronRight,
   Dumbbell, Settings, Trash2,
-  Play, MoreHorizontal, Calendar, Wallet,
+  Play, Calendar, Wallet,
   ChevronDown,
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
 import FitnessView from "../components/FitnessView";
-import BudgetView, { BudgetCategory, BudgetTransaction } from "../components/BudgetView";
-import type { PlannerDataPayload } from "../lib/plannerStorage";
+import BudgetView, { BudgetCategory, BudgetTransaction, Account } from "../components/BudgetView";
+import type { PlannerDataPayload, NotificationSettings } from "../lib/plannerStorage";
 import {
   loadPlannerData,
   readLegacyLocalPlanner,
   readLocalPlannerBackup,
   savePlannerData,
   writeLocalPlannerBackup,
+  loadNotificationSettings,
+  saveNotificationSettings,
 } from "../lib/plannerStorage";
+import type { EventAlertOption, TaskAlertOption } from "../lib/plannerStorage";
 
 export interface AppProps {
   userId: string;
@@ -35,15 +38,16 @@ export type GoalUnit  = "minutes" | "times";
 
 export interface Subtask    { id: string; title: string; dueDate: string; done: boolean; }
 export interface Group      { id: string; name: string; color: string; }
-export interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; }
-export interface CalTask    { id: string; title: string; dueDate: string; dueTime: string; groupId: string; notes: string; done: boolean; repeatDays: number[]; subtasks: Subtask[]; }
+export interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; alertOption?: EventAlertOption; alertTimestamp?: string; }
+export interface CalTask    { id: string; title: string; dueDate: string; dueTime: string; groupId: string; notes: string; done: boolean; repeatDays: number[]; subtasks: Subtask[]; alertOption?: TaskAlertOption; }
 export interface CalMeal    { id: string; name: string; description: string; mealType: MealType; date: string; time: string; calories: number; protein: number; carbs: number; fat: number; }
-export interface WSet       { wt: number; reps: number; done: boolean; }
+export type WSetType = "normal" | "warmup" | "dropset" | "failure";
+export interface WSet       { wt: number; reps: number; done: boolean; type?: WSetType; }
 export interface WExercise  { id: string; name: string; sets: WSet[]; }
 export interface CalWorkout { id: string; name: string; date: string; startTime: string; endTime: string; exercises: WExercise[]; }
 export interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; }
 export interface GoalLog    { id: string; goalId: string; date: string; }
-export interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; }
+export interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; customDate?: string; customStartTime?: string; }
 export interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; subtaskDone?: number; subtaskTotal?: number; }
 export interface LayItem extends TLItem { col: number; totalCols: number; }
 
@@ -105,6 +109,63 @@ export const fmtDateStr = (s: string) => {
   return `${DF[d.getDay()]}, ${MF[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`;
 };
 
+/** Human label for an upcoming date: "Today", "Tomorrow", or "Aug 12". */
+export const upcomingLabel = (d: Date) => {
+  const t = todayDate();
+  const diff = Math.round((d.getTime() - t.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return `${MF[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+};
+
+export function computeEventAlertTimestamp(option: EventAlertOption, dateStr: string, timeStr: string): string | undefined {
+  if (option === "none") return undefined;
+  
+  const base = new Date(`${dateStr}T${timeStr || "00:00"}:00`);
+  const offset = {
+    "at_time": 0,
+    "5min": -5,
+    "15min": -15,
+    "30min": -30,
+    "1hour": -60,
+    "1day": -1440,
+  }[option] || 0;
+  
+  base.setMinutes(base.getMinutes() + offset);
+  return base.toISOString();
+}
+
+/**
+ * First occurrence date at/after `from` for an entity with `repeatDays`.
+ * Single (non-repeating) items only count if their start date is >= `from`.
+ */
+export const nextOccurrenceDate = (
+  startDate: string,
+  endDate: string | undefined,
+  repeatDays: number[],
+  from: Date
+): Date | null => {
+  const t = new Date(from);
+  t.setHours(0, 0, 0, 0);
+  const start = new Date(startDate + "T00:00:00");
+
+  if (repeatDays.length === 0) {
+    return startDate >= dKey(t) ? new Date(start) : null;
+  }
+
+  // Repeating: find the first valid day-of-week at/after max(today, startDate), within endDate.
+  let cursor = start < t ? new Date(t) : new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+  const end = endDate ? new Date(endDate + "T00:00:00") : null;
+  for (let i = 0; i < 370; i++) {
+    if (repeatDays.includes(cursor.getDay())) {
+      if (!end || cursor <= end) return new Date(cursor);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return null;
+};
+
 //const dayCount = (date: Date, ev: CalEvent[], ta: CalTask[]) =>
   //ev.filter(e => eventApplies(e, date)).length + ta.filter(t => taskApplies(t, date)).length;
 
@@ -129,10 +190,11 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-export const inputCls = "w-full rounded-xl px-4 py-3 text-slate-900 dark:text-slate-50 text-sm outline-none border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md transition-all duration-200 focus:border-slate-300 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-800";
-export const inputSty = { backgroundColor: "rgba(255,255,255,.8)", caretColor: "#2563EB" } as React.CSSProperties;
+export const inputCls = "w-full rounded-xl px-4 py-3 text-slate-900 dark:text-slate-50 text-sm outline-none border border-slate-200 dark:border-stone-700 bg-white/80 dark:bg-stone-900/60 backdrop-blur-md transition-all duration-200 focus:border-slate-300 dark:focus:border-stone-500 focus:bg-white dark:focus:bg-stone-900/80";
+export const inputSty = { caretColor: "#2563EB" } as React.CSSProperties;
 export const labelSty = { color: "#475569", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
-export const cardSty  = { backgroundColor: "rgba(255,255,255,.85)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(15,23,42,.08)" } as React.CSSProperties;
+export const cardSty  = { backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" } as React.CSSProperties;
+export const cardCls  = "bg-white/85 dark:bg-stone-900/60 border border-slate-200/50 dark:border-stone-800/50";
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -424,10 +486,25 @@ function Timeline({ items, nowMin, onItemClick }: { items: TLItem[]; nowMin?: nu
 }
 
 // ─── Month View ───────────────────────────────────────────────────────────────
-function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrillDown }: {
+type UpcomingRow = {
+  key: string;
+  kind: "event" | "task";
+  date: Date;
+  title: string;
+  timeLabel?: string;
+  color: string;
+  id: string;
+};
+
+function MonthView({
+  selectedDate, setSelectedDate, calEvents, calTasks, groups,
+  onDrillDown, onOpenDetail,
+}: {
   selectedDate: Date; setSelectedDate: (d: Date) => void;
   calEvents: CalEvent[]; calTasks: CalTask[];
+  groups: Group[];
   onDrillDown?: (d: Date) => void;
+  onOpenDetail?: (kind: DetailKind, id: string) => void;
 }) {
   const [viewDate, setViewDate] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
   const year = viewDate.getFullYear(), month = viewDate.getMonth();
@@ -436,36 +513,50 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
   const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const DEFAULT_TASK_MINUTES = 30;
-
   function wlFor(day: number) {
     const d = new Date(year, month, day);
     const events = calEvents.filter(e => eventApplies(e, d));
     const tasks = calTasks.filter(t => taskApplies(t, d));
 
     const totalTasks = tasks.length;
-    const timedTasks = tasks.filter(t => t.dueTime && t.dueTime.trim()).length;
-
-    const eventMinutes = events.reduce((acc, ev) => {
-      const start = t2m(ev.startTime || "");
-      const end = t2m(ev.endTime || "");
-      const dur = Math.max(0, end - start);
-      return acc + dur;
-    }, 0);
-
-    const estimatedTaskMinutes = totalTasks * DEFAULT_TASK_MINUTES;
-    const combinedMinutes = eventMinutes + estimatedTaskMinutes;
-    const combinedHours = combinedMinutes / 60;
+    const totalEvents = events.length;
+    const totalCount = totalTasks + totalEvents;
 
     let level: "light" | "moderate" | "busy" | null = null;
-    if (combinedMinutes === 0 && totalTasks === 0) level = null;
-    else if (combinedHours < 2 && totalTasks <= 2) level = "light";
-    else if ((combinedHours >= 2 && combinedHours <= 5) || (totalTasks >= 3 && totalTasks <= 5)) level = "moderate";
-    else if (combinedHours > 5 || totalTasks >= 6) level = "busy";
+    if (totalCount === 0) level = null;
+    else if (totalCount <= 2) level = "light";
+    else if (totalCount <= 5) level = "moderate";
+    else level = "busy";
 
     const color = level === "light" ? "#22C55E" : level === "moderate" ? "#EAB308" : level === "busy" ? "#EF4444" : null;
-    return { level, color, totalTasks, timedTasks, combinedHours };
+    return { level, color, totalTasks, totalEvents, totalCount };
   }
+
+  // ── Upcoming Events & Tasks feed (next occurrence of each event/task) ──
+  const from = todayDate();
+  const upcoming: UpcomingRow[] = [];
+  calEvents.forEach(e => {
+    const d = nextOccurrenceDate(e.startDate, e.endDate, e.repeatDays, from);
+    if (!d) return;
+    upcoming.push({
+      key: `e-${e.id}`, kind: "event", date: d, id: e.id,
+      title: e.title,
+      timeLabel: e.startTime ? m2d(t2m(e.startTime)) : undefined,
+      color: gColor(groups, e.groupId),
+    });
+  });
+  calTasks.forEach(t => {
+    const d = nextOccurrenceDate(t.dueDate, undefined, t.repeatDays, from);
+    if (!d) return;
+    upcoming.push({
+      key: `t-${t.id}`, kind: "task", date: d, id: t.id,
+      title: t.title,
+      timeLabel: t.dueTime ? m2d(t2m(t.dueTime)) : undefined,
+      color: gColor(groups, t.groupId),
+    });
+  });
+  upcoming.sort((a, b) => a.date.getTime() - b.date.getTime() || (a.timeLabel ?? "").localeCompare(b.timeLabel ?? ""));
+  const visibleUpcoming = upcoming.slice(0, 30);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -498,9 +589,10 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
         ))}
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-24" style={{ scrollbarWidth: "none" }}>
+        {/* Monthly grid — auto-resizing cells; day number top-right, task badge centered */}
         <div className="grid grid-cols-7 gap-1">
           {cells.map((day, i) => {
-            if (!day) return <div key={i} className="aspect-square" />;
+            if (!day) return <div key={i} className="min-h-[54px]" />;
             const d = new Date(year, month, day);
             const isSel = dKey(d) === dKey(selectedDate);
             const isTod = isToday(d);
@@ -510,7 +602,7 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
             return (
               <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
                 className={[
-                  "aspect-square rounded-xl flex flex-col items-center justify-center transition-colors",
+                  "relative min-h-[54px] h-auto py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-colors",
                   isSel ? "bg-indigo-500 text-white ring-2 ring-indigo-500" :
                   info?.level === "busy" ? "bg-rose-500/10 dark:bg-rose-500/20" :
                   info?.level === "moderate" ? "bg-amber-500/10 dark:bg-amber-500/20" :
@@ -518,8 +610,10 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
                   "bg-slate-100/60 dark:bg-white/5",
                   !isSel && isTod ? "ring-1 ring-indigo-400/30" : "",
                 ].join(" ")}>
+                {/* Day number — top-right corner */}
                 <span className={[
-                  "text-[13px]",
+                  "absolute top-1 right-1.5 leading-none",
+                  "text-[11px]",
                   isSel || isTod ? "font-bold" : "font-medium",
                   isSel ? "text-white" :
                   isPast ? "text-slate-400 dark:text-slate-600" :
@@ -527,32 +621,203 @@ function MonthView({ selectedDate, setSelectedDate, calEvents, calTasks, onDrill
                 ].join(" ")}>
                   {day}
                 </span>
-                {info?.totalTasks ? (
-                  <div className="mt-1 flex items-center gap-2">
+                {/* Centered task counter + workload */}
+                <div className="flex flex-col items-center justify-center gap-1">
+                  {info?.totalTasks ? (
                     <span className={[
-                      "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                      "text-[10px] font-semibold px-2 py-0.5 rounded-full leading-tight",
                       isSel ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/10 text-slate-900 dark:text-slate-100",
                     ].join(" ")}>
-                      {info.totalTasks} Tasks
+                      {info.totalTasks} Task{info.totalTasks !== 1 ? "s" : ""}
                     </span>
-                    {info.combinedHours > 0 && (
-                      <span className={[
-                        "text-[10px] font-bold",
-                        isSel ? "text-white/80" : "text-slate-500 dark:text-slate-400",
-                      ].join(" ")}>
-                        {info.combinedHours.toFixed(1)}h
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  color && <div className="w-1 h-1 rounded-full mt-0.5" style={{ backgroundColor: color }} />
-                )}
+                  ) : (
+                    <div className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: color ?? "transparent" }} />
+                  )}
+                  {info?.totalEvents > 0 && (
+                    <span className={[
+                      "text-[9px] font-bold leading-none",
+                      isSel ? "text-white/80" : "text-slate-500 dark:text-slate-400",
+                    ].join(" ")}>
+                      {info.totalEvents} Event{info.totalEvents !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
+
+        {/* ── Upcoming Events & Tasks feed ── */}
+        <div className="mt-6">
+          <p className="mb-3 text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 14 }}>
+            Upcoming Events & Tasks
+          </p>
+          {visibleUpcoming.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-4 text-center"
+              style={{ borderColor: "var(--card-border)", color: "#3A3A5A", fontSize: 12 }}>
+              Nothing upcoming
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visibleUpcoming.map(row => {
+                const accent = row.kind === "event" ? "#2563EB" : "#0284C7";
+                return (
+                  <button key={row.key}
+                    onClick={() => onOpenDetail && onOpenDetail(row.kind, row.id)}
+                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left glass-card-interactive"
+                    style={{ cursor: "pointer" }}>
+                    {/* Date tile */}
+                    <div className="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-xl"
+                      style={{ backgroundColor: `${accent}12`, outline: `1px solid ${accent}25` }}>
+                      <span className="text-[9px] font-bold uppercase leading-none"
+                        style={{ color: accent, letterSpacing: "0.08em" }}>
+                        {MF[row.date.getMonth()].slice(0, 3)}
+                      </span>
+                      <span className="text-sm font-bold leading-none mt-0.5" style={{ color: accent }}>
+                        {row.date.getDate()}
+                      </span>
+                    </div>
+                    {/* Name / title */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-50 truncate">{row.title}</p>
+                      <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
+                        {upcomingLabel(row.date)}{row.timeLabel ? ` · ${row.timeLabel}` : ""}
+                      </p>
+                    </div>
+                    {/* Type badge */}
+                    <span className={[
+                      "text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0",
+                      row.kind === "event" ? "pill-event" : "pill-task",
+                    ].join(" ")}>
+                      {row.kind === "event" ? "Event" : "Task"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+// ─── Day Drill-Down (Daily View) ──────────────────────────────────────────────
+function DayDrillDown({ day, onClose, calEvents, calTasks, calWorkouts, groups, onOpenDetail }: {
+  day: Date;
+  onClose: () => void;
+  calEvents: CalEvent[];
+  calTasks: CalTask[];
+  calWorkouts: CalWorkout[];
+  groups: Group[];
+  onOpenDetail: (kind: DetailKind, id: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const now = new Date();
+  const NowMin = now.getHours() * 60 + now.getMinutes();
+
+  const eventsOnDay = calEvents.filter(e => eventApplies(e, day));
+  const workoutsOnDay = calWorkouts.filter(w => w.date === dKey(day));
+  const dayTasks = calTasks.filter(t => taskApplies(t, day));
+  const timedTasks = dayTasks.filter(t => t.dueTime);
+
+  // Auto-scroll the timeline so 9:00 AM sits at the very top (9h × 60px/h = 540px).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = 9 * 60;
+  }, [day]);
+
+  const items: TLItem[] = [];
+  eventsOnDay.forEach(e => {
+    const sM = t2m(e.startTime), eM = t2m(e.endTime) || sM + 60;
+    items.push({ id: e.id, title: e.title, startMin: sM, endMin: Math.max(eM, sM + 30), type: "event", color: gColor(groups, e.groupId), subtitle: e.notes ? e.notes.split("\n")[0] : gName(groups, e.groupId) || undefined });
+  });
+  timedTasks.forEach(t => {
+    const sM = t2m(t.dueTime);
+    const st = subtaskStats(t.subtasks);
+    items.push({ id: t.id, title: t.title, startMin: sM, endMin: sM + 30, type: "task", color: gColor(groups, t.groupId), done: t.done, subtitle: st ? `${st.done}/${st.total} subtasks` : undefined });
+  });
+  workoutsOnDay.forEach(w => {
+    const sM = t2m(w.startTime), eM = t2m(w.endTime) || sM + 60;
+    items.push({ id: w.id, title: w.name, startMin: sM, endMin: Math.max(eM, sM + 30), type: "workout", color: "#F43F5E", subtitle: `${w.exercises.length} exercise${w.exercises.length !== 1 ? "s" : ""}` });
+  });
+
+  return (
+    <ModalShell title={`${DF[day.getDay()]}, ${MF[day.getMonth()].slice(0,3)} ${day.getDate()}`} onClose={onClose}>
+      {/* ── Full 24-hour timeline (auto-scrolls to 9:00 AM) ── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="mb-0" style={labelSty}>Schedule · 24h</p>
+          <span style={{ fontSize: 10, color: "#6366F1", fontWeight: 600 }}>△ 9:00 AM</span>
+        </div>
+        <div
+          ref={scrollRef}
+          className="rounded-2xl border"
+          style={{
+            height: 440,
+            overflowY: "auto",
+            overflowX: "hidden",
+            backgroundColor: "var(--card-bg)",
+            borderColor: "var(--card-border)",
+            scrollbarWidth: "none",
+          }}
+        >
+          <div className="px-2.5 py-2.5">
+            {items.length > 0 ? (
+              <Timeline items={items} nowMin={isToday(day) ? NowMin : undefined}
+                onItemClick={(id, type) => onOpenDetail(type === "event" ? "event" : type === "workout" ? "workout" : "task", id)} />
+            ) : (
+              <div className="p-6 text-center" style={{ color: "#3A3A5A", fontSize: 12 }}>
+                No scheduled items for this day
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Day Tasks list ── */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="mb-0" style={labelSty}>Day Tasks</p>
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: "color-mix(in srgb, var(--color-task) 15%, transparent)", color: "var(--color-task)" }}>
+            {dayTasks.length}
+          </span>
+        </div>
+        {dayTasks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed p-4 text-center"
+            style={{ borderColor: "var(--card-border)", color: "#3A3A5A", fontSize: 12 }}>
+            No tasks for this day
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {dayTasks.map(t => (
+              <div key={t.id} className="entity-task-card rounded-xl p-3" style={{ cursor: "pointer" }}
+                onClick={() => onOpenDetail("task", t.id)}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center"
+                    style={{ borderColor: gColor(groups, t.groupId), backgroundColor: t.done ? gColor(groups, t.groupId) : "transparent" }}>
+                    {t.done && <Check size={8} className="text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-50 truncate"
+                      style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? "#78716C" : undefined }}>
+                      {t.title}
+                    </p>
+                    <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, marginTop: 1 }}>
+                      {t.dueTime ? `Due ${m2d(t2m(t.dueTime))}` : "Anytime"}
+                      {t.groupId && ` · ${gName(groups, t.groupId)}`}
+                    </p>
+                  </div>
+                  <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </ModalShell>
   );
 }
 
@@ -693,13 +958,60 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
       ),
     });
 
-  const toggleSet = (exId: string, si: number) =>
+  const toggleSet = (exId: string, si: number) => {
+    const isNowDone = !activeWorkout.exercises.find(e => e.id === exId)?.sets[si].done;
     setActiveWorkout({
       ...activeWorkout,
       exercises: activeWorkout.exercises.map(ex =>
         ex.id !== exId ? ex : { ...ex, sets: ex.sets.map((s, i) => i !== si ? s : { ...s, done: !s.done }) }
       ),
     });
+    // Potential rest timer trigger here
+    if (isNowDone) {
+      console.log("Set completed - rest timer would trigger here");
+    }
+  };
+
+  const deleteSet = (exId: string, si: number) =>
+    setActiveWorkout({
+      ...activeWorkout,
+      exercises: activeWorkout.exercises.map(ex =>
+        ex.id !== exId ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== si) }
+      ),
+    });
+
+  const updateSetType = (exId: string, si: number) => {
+    const types: WSetType[] = ["normal", "warmup", "dropset", "failure"];
+    setActiveWorkout({
+      ...activeWorkout,
+      exercises: activeWorkout.exercises.map(ex =>
+        ex.id !== exId ? ex : {
+          ...ex,
+          sets: ex.sets.map((s, i) => {
+            if (i !== si) return s;
+            const curIdx = types.indexOf(s.type || "normal");
+            const nextType = types[(curIdx + 1) % types.length];
+            return { ...s, type: nextType };
+          })
+        }
+      ),
+    });
+  };
+
+  const moveExercise = (idx: number, dir: number) => {
+    const newExs = [...activeWorkout.exercises];
+    const targetIdx = idx + dir;
+    if (targetIdx < 0 || targetIdx >= newExs.length) return;
+    [newExs[idx], newExs[targetIdx]] = [newExs[targetIdx], newExs[idx]];
+    setActiveWorkout({ ...activeWorkout, exercises: newExs });
+  };
+
+  const removeExercise = (exId: string) => {
+    setActiveWorkout({
+      ...activeWorkout,
+      exercises: activeWorkout.exercises.filter(ex => ex.id !== exId)
+    });
+  };
 
   const doneSets  = activeWorkout.exercises.reduce((a, e) => a + e.sets.filter(s => s.done).length, 0);
   const totalSets = activeWorkout.exercises.reduce((a, e) => a + e.sets.length, 0);
@@ -708,9 +1020,28 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
     <div className="absolute inset-0 z-50 flex flex-col" style={{ backgroundColor: "#0A0D14" }}>
       <div className="px-5 pt-10 pb-3 flex-shrink-0">
         <div className="flex items-start justify-between mb-3">
-          <div>
+          <div className="flex-1">
             <p style={{ fontSize: 10, fontWeight: 700, color: "#F43F5E", letterSpacing: "0.1em", textTransform: "uppercase" }}>Active Workout</p>
-            <h1 className="text-white font-bold leading-tight" style={{ fontSize: 18 }}>{activeWorkout.name}</h1>
+            <input
+              value={activeWorkout.name}
+              onChange={e => setActiveWorkout({ ...activeWorkout, name: e.target.value })}
+              className="bg-transparent text-white font-bold leading-tight outline-none w-full"
+              style={{ fontSize: 18 }}
+            />
+            <div className="flex gap-2 mt-2">
+              <input
+                type="date"
+                value={activeWorkout.customDate || dKey(new Date(activeWorkout.startedAt))}
+                onChange={e => setActiveWorkout({ ...activeWorkout, customDate: e.target.value })}
+                className="bg-stone-900/40 text-[10px] text-slate-300 rounded px-2 py-1 outline-none border border-white/10 focus:border-rose-500/50"
+              />
+              <input
+                type="time"
+                value={activeWorkout.customStartTime || nowHHMM()}
+                onChange={e => setActiveWorkout({ ...activeWorkout, customStartTime: e.target.value })}
+                className="bg-stone-900/40 text-[10px] text-slate-300 rounded px-2 py-1 outline-none border border-white/10 focus:border-rose-500/50"
+              />
+            </div>
           </div>
           <div className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: "rgba(244,63,94,.12)" }}>
             <p className="font-mono font-bold leading-none" style={{ color: "#F43F5E", fontSize: 20 }}>{fmtT(Math.max(0, elapsed))}</p>
@@ -738,37 +1069,71 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
             <p style={{ fontSize: 13, color: "#3A3A5A" }}>Add your first exercise</p>
           </div>
         )}
-        {activeWorkout.exercises.map(ex => (
+        {activeWorkout.exercises.map((ex, exIdx) => (
           <div key={ex.id} className="rounded-2xl p-4" style={cardSty}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-white font-bold text-sm">{ex.name}</p>
-              <button><MoreHorizontal size={16} style={{ color: "#3A3A5A" }} /></button>
+              <input
+                value={ex.name}
+                onChange={e => {
+                  setActiveWorkout({
+                    ...activeWorkout,
+                    exercises: activeWorkout.exercises.map(exercise => exercise.id === ex.id ? { ...exercise, name: e.target.value } : exercise)
+                  });
+                }}
+                className="bg-transparent text-white font-bold text-sm outline-none flex-1"
+              />
+              <div className="flex items-center gap-2">
+                <button onClick={() => moveExercise(exIdx, -1)} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={exIdx === 0}>
+                  <ChevronLeft size={16} className="rotate-90" />
+                </button>
+                <button onClick={() => moveExercise(exIdx, 1)} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={exIdx === activeWorkout.exercises.length - 1}>
+                  <ChevronRight size={16} className="rotate-90" />
+                </button>
+                <button onClick={() => removeExercise(ex.id)} className="p-1 text-rose-500/50 hover:text-rose-500">
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
             {ex.sets.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 mb-2 px-1">
-                {["Set","lbs","Reps","✓"].map(h => (
+              <div className="grid grid-cols-[3.5rem_1fr_1fr_3.5rem] gap-2 mb-2 px-1">
+                {["Type","lbs","Reps","✓"].map(h => (
                   <p key={h} style={{ fontSize: 9, color: "#3A3A5A", fontWeight: 700, textTransform: "uppercase", textAlign: "center" }}>{h}</p>
                 ))}
               </div>
             )}
             <div className="space-y-1.5">
-              {ex.sets.map((s, si) => (
-                <div key={si} className="grid grid-cols-4 gap-2 items-center py-2 px-1 rounded-xl"
-                  style={{ backgroundColor: s.done ? "rgba(244,63,94,.1)" : "rgba(255,255,255,.03)" }}>
-                  <p style={{ color: s.done ? "#F43F5E" : "#5A5A80", fontWeight: 700, fontSize: 13, textAlign: "center" }}>{si + 1}</p>
-                  <input type="number" value={s.wt || ""} onChange={e => updateSet(ex.id, si, "wt", Number(e.target.value))}
-                    className="text-white font-bold text-sm text-center rounded-lg py-1 outline-none"
-                    style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
-                  <input type="number" value={s.reps || ""} onChange={e => updateSet(ex.id, si, "reps", Number(e.target.value))}
-                    className="text-white font-bold text-sm text-center rounded-lg py-1 outline-none"
-                    style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
-                  <button onClick={() => toggleSet(ex.id, si)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center mx-auto"
-                    style={{ backgroundColor: s.done ? "#F43F5E" : "rgba(255,255,255,.08)" }}>
-                    {s.done ? <Check size={12} className="text-white" /> : <span style={{ width: 8, height: 8, borderRadius: 99, border: "1.5px solid #3A3A5E", display: "block" }} />}
-                  </button>
-                </div>
-              ))}
+              {ex.sets.map((s, si) => {
+                const typeLabels: Record<WSetType, string> = { normal: "N", warmup: "W", dropset: "D", failure: "F" };
+                const typeColors: Record<WSetType, string> = { normal: "#5A5A80", warmup: "#EAB308", dropset: "#818CF8", failure: "#F43F5E" };
+                return (
+                  <div key={si} className="grid grid-cols-[3.5rem_1fr_1fr_3.5rem] gap-2 items-center py-2 px-1 rounded-xl group relative"
+                    style={{ backgroundColor: s.done ? "rgba(244,63,94,.1)" : "rgba(255,255,255,.03)" }}>
+                    <button
+                      onClick={() => updateSetType(ex.id, si)}
+                      className="w-8 h-6 rounded flex items-center justify-center mx-auto text-[10px] font-bold"
+                      style={{ backgroundColor: `${typeColors[s.type || "normal"]}20`, color: typeColors[s.type || "normal"], border: `1px solid ${typeColors[s.type || "normal"]}40` }}
+                    >
+                      {typeLabels[s.type || "normal"]}{si + 1}
+                    </button>
+                    <input type="number" value={s.wt || ""} onChange={e => updateSet(ex.id, si, "wt", Number(e.target.value))}
+                      className="text-white font-bold text-sm text-center rounded-lg py-1 outline-none"
+                      style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
+                    <input type="number" value={s.reps || ""} onChange={e => updateSet(ex.id, si, "reps", Number(e.target.value))}
+                      className="text-white font-bold text-sm text-center rounded-lg py-1 outline-none"
+                      style={{ backgroundColor: "rgba(255,255,255,.06)", width: "100%" }} placeholder="0" />
+                    <div className="flex items-center gap-1 justify-center">
+                      <button onClick={() => toggleSet(ex.id, si)}
+                        className="w-7 h-7 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: s.done ? "#F43F5E" : "rgba(255,255,255,.08)" }}>
+                        {s.done ? <Check size={12} className="text-white" /> : <span style={{ width: 8, height: 8, borderRadius: 99, border: "1.5px solid #3A3A5E", display: "block" }} />}
+                      </button>
+                      <button onClick={() => deleteSet(ex.id, si)} className="absolute -right-2 p-1 text-rose-500/0 group-hover:text-rose-500/50 transition-colors">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
               <button onClick={() => addSet(ex.id)}
                 className="w-full py-2 rounded-xl border border-dashed text-xs font-semibold"
                 style={{ borderColor: "rgba(255,255,255,.1)", color: "#4E4E72" }}>
@@ -824,7 +1189,7 @@ function WorkoutOverlay({ activeWorkout, setActiveWorkout, onComplete, onCancel 
 }
 
 // ─── Event Modal ──────────────────────────────────────────────────────────────
-function EventModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; selectedDate: Date; onAdd: (e: CalEvent) => void; onClose: () => void }) {
+function EventModal({ groups, selectedDate, onAdd, onClose, defaultEventAlert }: { groups: Group[]; selectedDate: Date; onAdd: (e: CalEvent) => void; onClose: () => void; defaultEventAlert?: EventAlertOption; }) {
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState(dKey(selectedDate));
   const [endDate, setEndDate] = useState(dKey(selectedDate));
@@ -836,10 +1201,11 @@ function EventModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[];
   const [repeatDays, setRepeatDays] = useState<number[]>([]);
   const [groupId, setGroupId] = useState("");
   const [notes, setNotes] = useState("");
+  const [alertOption, setAlertOption] = useState<EventAlertOption>(defaultEventAlert || "15min");
 
   const submit = () => {
     if (!title.trim()) return;
-    onAdd({ id: uid(), title: title.trim(), startDate, endDate, startTime, endTime, groupId, notes, repeatDays });
+    onAdd({ id: uid(), title: title.trim(), startDate, endDate, startTime, endTime, groupId, notes, repeatDays, alertOption, alertTimestamp: computeEventAlertTimestamp(alertOption, startDate, startTime) });
     onClose();
   };
 
@@ -853,6 +1219,17 @@ function EventModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[];
           <div key={f.l}><p className="mb-1.5" style={labelSty}>{f.l}</p>
             <input type="time" className={inputCls} style={inputSty} value={f.v} onChange={e => f.s(e.target.value)} /></div>
         ))}
+      </div>
+      <div><p className="mb-1.5" style={labelSty}>Remind Me</p>
+        <select value={alertOption} onChange={e => setAlertOption(e.target.value as EventAlertOption)} className={inputCls} style={inputSty}>
+          <option value="none">None</option>
+          <option value="at_time">At time of event</option>
+          <option value="5min">5 mins before</option>
+          <option value="15min">15 mins before</option>
+          <option value="30min">30 mins before</option>
+          <option value="1hour">1 hour before</option>
+          <option value="1day">1 day before</option>
+        </select>
       </div>
       <div><p className="mb-1.5" style={labelSty}>Repeat on</p>
         <DaySelector selected={repeatDays} onChange={days => {
@@ -881,7 +1258,7 @@ function EventModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[];
 }
 
 // ─── Task Modal ───────────────────────────────────────────────────────────────
-function TaskModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; selectedDate: Date; onAdd: (t: CalTask) => void; onClose: () => void }) {
+function TaskModal({ groups, selectedDate, onAdd, onClose, defaultTaskAlert }: { groups: Group[]; selectedDate: Date; onAdd: (t: CalTask) => void; onClose: () => void; defaultTaskAlert?: TaskAlertOption; }) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(dKey(selectedDate));
   const [dueTime, setDueTime] = useState("");
@@ -889,12 +1266,13 @@ function TaskModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; 
   const [groupId, setGroupId] = useState("");
   const [notes, setNotes] = useState("");
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [alertOption, setAlertOption] = useState<TaskAlertOption>(defaultTaskAlert || "15min");
 
   const submit = () => {
     if (!title.trim()) return;
     const task: CalTask = {
       id: uid(), title: title.trim(), dueDate, dueTime, groupId, notes, repeatDays,
-      done: false, subtasks,
+      done: false, subtasks, alertOption,
     };
     onAdd(applySubtaskCompletion(task));
     onClose();
@@ -907,6 +1285,15 @@ function TaskModal({ groups, selectedDate, onAdd, onClose }: { groups: Group[]; 
         <input type="date" className={inputCls} style={inputSty} value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
       <div><p className="mb-1.5" style={labelSty}>Due Time (optional)</p>
         <input type="time" className={inputCls} style={inputSty} value={dueTime} onChange={e => setDueTime(e.target.value)} /></div>
+      <div><p className="mb-1.5" style={labelSty}>Remind Me</p>
+        <select value={alertOption} onChange={e => setAlertOption(e.target.value as TaskAlertOption)} className={inputCls} style={inputSty}>
+          <option value="none">None</option>
+          <option value="at_due">At due time</option>
+          <option value="15min">15 mins before</option>
+          <option value="1hour">1 hour before</option>
+          <option value="9am_due_date">9:00 AM on due date</option>
+        </select>
+      </div>
       <div><p className="mb-1.5" style={labelSty}>Repeat on</p><DaySelector selected={repeatDays} onChange={setRepeatDays} /></div>
       <div><p className="mb-1.5" style={labelSty}>Group</p><GroupPicker groups={groups} selected={groupId} onChange={setGroupId} /></div>
       <div><p className="mb-1.5" style={labelSty}>Notes</p>
@@ -1598,7 +1985,6 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [showWorkoutOverlay, setShowWorkoutOverlay] = useState(false);
   const [detailItem, setDetailItem] = useState<{ kind: DetailKind; id: string } | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
-  const [untimedOpen, setUntimedOpen] = useState(true);
   const [syncStatus, setSyncStatus] = useState<"idle" | "saving" | "error">("idle");
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
@@ -1615,7 +2001,9 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [activeWorkout, setActiveWorkout] = useState<ActiveWO | null>(null);
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
   const [budgetTransactions, setBudgetTransactions] = useState<BudgetTransaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
 
   // ── Load planner data for this account ──
   useEffect(() => {
@@ -1644,7 +2032,21 @@ export default function App({ userId, username, onSignOut }: AppProps) {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true };
+  }, [userId]);
+
+  // ── Load notification settings ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const settings = await loadNotificationSettings(userId);
+        if (!cancelled && settings) setNotificationSettings(settings);
+      } catch {
+        // Silently fail - defaults will be used
+      }
+    })();
+    return () => { cancelled = true };
   }, [userId]);
 
   // ── Apply dark mode to root element and persist ──
@@ -1664,6 +2066,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
 
     const payload: PlannerDataPayload = {
       calEvents, calTasks, calMeals, calWorkouts, calGoals, goalLogs, groups, activeWorkout,
+      budgetCategories, budgetTransactions, accounts,
     };
     writeLocalPlannerBackup(userId, payload);
 
@@ -1689,12 +2092,19 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     if (!activeWorkout) return;
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
-    const startedAt = new Date(activeWorkout.startedAt);
-    const startTime = `${pad(startedAt.getHours())}:${pad(startedAt.getMinutes())}`;
-    const endTime   = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    
+    // Check for custom date/time overrides
+    const dateStr = activeWorkout.customDate || dKey(new Date(activeWorkout.startedAt));
+    const startTime = activeWorkout.customStartTime || (() => {
+      const d = new Date(activeWorkout.startedAt);
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    })();
+    
+    const endTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    
     setCalWorkouts(prev => [...prev, {
       id: uid(), name: activeWorkout.name,
-      date: dKey(startedAt), startTime, endTime,
+      date: dateStr, startTime, endTime,
       exercises: activeWorkout.exercises,
     }]);
     setActiveWorkout(null);
@@ -1762,6 +2172,14 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setBudgetTransactions(p => p.filter(t => t.id !== id));
   };
 
+  const handleAddAccount = (account: Account) => {
+    setAccounts(p => [...p, account]);
+  };
+
+  const handleDeleteAccount = (id: string) => {
+    setAccounts(p => p.filter(a => a.id !== id));
+  };
+
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
@@ -1772,84 +2190,21 @@ export default function App({ userId, username, onSignOut }: AppProps) {
         <div className="absolute inset-0 overflow-hidden">
           {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} budgetCategories={budgetCategories} budgetTransactions={budgetTransactions} />}
           {screen === "fitness" && <FitnessView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
-          {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
+          {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} onOpenDetail={openDetail} />}
 
           {drillDate && (
-            <ModalShell title={`${DF[drillDate.getDay()]}, ${MF[drillDate.getMonth()].slice(0,3)} ${drillDate.getDate()}`} onClose={() => setDrillDate(null)}>
-              <div>
-                {(() => {
-                  const day = drillDate!;
-                  const now = new Date();
-                  const NowMin = now.getHours() * 60 + now.getMinutes();
-                  const eventsOnDay = calEvents.filter(e => eventApplies(e, day));
-                  const workoutsOnDay = calWorkouts.filter(w => w.date === dKey(day));
-                  const timedTasks = calTasks.filter(t => taskApplies(t, day) && t.dueTime);
-                  const untimedTasks = calTasks.filter(t => taskApplies(t, day) && !t.dueTime);
-
-                  const items: TLItem[] = [];
-                  eventsOnDay.forEach(e => {
-                    const sM = t2m(e.startTime), eM = t2m(e.endTime) || sM + 60;
-                    items.push({ id: e.id, title: e.title, startMin: sM, endMin: Math.max(eM, sM + 30), type: "event", color: gColor(groups, e.groupId), subtitle: e.notes ? e.notes.split("\n")[0] : gName(groups, e.groupId) || undefined });
-                  });
-                  timedTasks.forEach(t => {
-                    const sM = t2m(t.dueTime);
-                    const st = subtaskStats(t.subtasks);
-                    items.push({ id: t.id, title: t.title, startMin: sM, endMin: sM + 30, type: "task", color: gColor(groups, t.groupId), done: t.done, subtitle: st ? `${st.done}/${st.total} subtasks` : undefined });
-                  });
-                  workoutsOnDay.forEach(w => {
-                    const sM = t2m(w.startTime), eM = t2m(w.endTime) || sM + 60;
-                    items.push({ id: w.id, title: w.name, startMin: sM, endMin: Math.max(eM, sM + 30), type: "workout", color: "#F43F5E", subtitle: `${w.exercises.length} exercise${w.exercises.length !== 1 ? "s" : ""}` });
-                  });
-
-                  return (
-                    <div>
-                      {(items.length > 0) ? (
-                        <Timeline items={items} nowMin={isToday(day) ? NowMin : undefined} onItemClick={(id, type) => openDetail(type === "event" ? "event" : "task", id)} />
-                      ) : (
-                        <div className="p-4 text-center" style={{ color: "#3A3A5A" }}>No scheduled items for this day</div>
-                      )}
-
-                      {untimedTasks.length > 0 && (
-                        <div className="mt-3 rounded-2xl border backdrop-blur-md" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--card-border)" }}>
-                          <button
-                            onClick={() => setUntimedOpen(!untimedOpen)}
-                            className="w-full flex items-center justify-between px-4 py-3"
-                          >
-                            <span className="text-slate-900 dark:text-slate-50 font-bold text-sm">Due Today (Anytime)</span>
-                            <span className="flex items-center gap-2">
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--color-task) 15%, transparent)", color: "var(--color-task)" }}>
-                                {untimedTasks.length}
-                              </span>
-                              <ChevronDown size={14} className={`text-slate-500 dark:text-slate-400 transition-transform duration-200 ${untimedOpen ? "rotate-180" : ""}`} />
-                            </span>
-                          </button>
-                          {untimedOpen && (
-                            <div className="px-3 pb-3 space-y-2">
-                              {untimedTasks.map(t => (
-                                <div key={t.id} className="entity-task-card rounded-xl p-3" style={{ cursor: "pointer" }} onClick={() => openDetail("task", t.id)}>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-slate-900 dark:text-slate-50 font-semibold text-sm">{t.title}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <TaskSubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
-                                      {t.groupId && <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${gColor(groups, t.groupId)}20`, color: gColor(groups, t.groupId) }}>{gName(groups, t.groupId)}</span>}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </ModalShell>
+            <DayDrillDown
+              day={drillDate}
+              onClose={() => setDrillDate(null)}
+              calEvents={calEvents}
+              calTasks={calTasks}
+              calWorkouts={calWorkouts}
+              groups={groups}
+              onOpenDetail={(kind, id) => { setDrillDate(null); openDetail(kind, id); }}
+            />
           )}
           {screen === "goals"   && <GoalsView calGoals={calGoals} groups={groups} onModal={openModal} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} />}
-          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} />}
+          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} accounts={accounts} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} onAddAccount={handleAddAccount} onDeleteAccount={handleDeleteAccount} />}
         </div>
 
         <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} onAddClick={() => setAddOpen(true)} username={username} />
@@ -1872,8 +2227,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
           />
         )}
 
-        {modal === "event"        && <EventModal        groups={groups} selectedDate={selectedDate} onAdd={handleAddEvent}                         onClose={() => setModal(null)} />}
-        {modal === "task"         && <TaskModal         groups={groups} selectedDate={selectedDate} onAdd={handleAddTask}                          onClose={() => setModal(null)} />}
+        {modal === "event"        && <EventModal        groups={groups} selectedDate={selectedDate} onAdd={handleAddEvent}                         onClose={() => setModal(null)} defaultEventAlert={notificationSettings?.eventDefaultAlert} />}
+        {modal === "task"         && <TaskModal         groups={groups} selectedDate={selectedDate} onAdd={handleAddTask}                          onClose={() => setModal(null)} defaultTaskAlert={notificationSettings?.taskDefaultAlert} />}
         {modal === "meal"         && <MealModal         selectedDate={selectedDate}                 onAdd={m => setCalMeals(p => [...p, m])}       onClose={() => setModal(null)} />}
         {modal === "goal"         && <GoalModal         groups={groups}                             onAdd={handleAddGoal}                          onClose={() => setModal(null)} />}
         {modal === "startWorkout" && <StartWorkoutModal                                             onStart={startWorkout}                         onClose={() => setModal(null)} />}
@@ -1887,6 +2242,11 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             onClose={() => setAccountOpen(false)}
             darkMode={darkMode}
             onToggleDarkMode={() => setDarkMode(!darkMode)}
+            notificationSettings={notificationSettings}
+            onSaveNotificationSettings={async (settings) => {
+              await saveNotificationSettings(userId, settings);
+              setNotificationSettings(settings);
+            }}
           />
         )}
       </div>
