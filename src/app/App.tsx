@@ -1745,7 +1745,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
         style={{ height: "100dvh", maxHeight: 900, boxShadow: "0 0 60px rgba(0,0,0,.08)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
-          {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} budgetCategories={budgetCategories} budgetTransactions={budgetTransactions} />}
+          {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} budgetCategories={budgetCategories} budgetTransactions={budgetTransactions} />}
           {screen === "fitness" && <FitnessView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
           {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
 
@@ -1812,7 +1812,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
           {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} />}
         </div>
 
-        <BottomNav screen={screen} onChange={setScreen} onAddClick={() => setAddOpen(true)} username={username} />
+        <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} onAddClick={() => setAddOpen(true)} username={username} />
 
         {addOpen && <AddMenu onSelect={openModal} onClose={() => setAddOpen(false)} />}
         {showWorkoutOverlay && activeWorkout && (

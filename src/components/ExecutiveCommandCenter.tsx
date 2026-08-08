@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import type {
   CalEvent, CalTask, CalMeal, CalWorkout, CalGoal, GoalLog,
-  Group, ActiveWO, Subtask, ModalKind, DetailKind,
+  Group, ActiveWO, Subtask, DetailKind,
 } from "../app/App";
 import type { BudgetCategory, BudgetTransaction } from "./BudgetView";
 import {
@@ -27,7 +27,6 @@ export interface ExecutiveCommandCenterProps {
   calMeals: CalMeal[];
   groups: Group[];
   activeWorkout: ActiveWO | null;
-  onModal: (m: ModalKind) => void;
   setCalTasks: React.Dispatch<React.SetStateAction<CalTask[]>>;
   goalLogs: GoalLog[];
   toggleGoalLog: (goalId: string, date: Date) => void;
@@ -125,7 +124,7 @@ export default function ExecutiveCommandCenter({
   selectedDate, setSelectedDate,
   calEvents, calTasks, calWorkouts, calGoals, calMeals,
   groups, activeWorkout,
-  onModal, setCalTasks,
+  setCalTasks,
   goalLogs, toggleGoalLog,
   onDetail, username,
   budgetCategories, budgetTransactions,
