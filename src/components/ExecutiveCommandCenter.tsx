@@ -33,7 +33,6 @@ export interface ExecutiveCommandCenterProps {
   toggleGoalLog: (goalId: string, date: Date) => void;
   onDetail: (kind: DetailKind, id: string) => void;
   username: string;
-  onAccountClick: () => void;
   budgetCategories: BudgetCategory[];
   budgetTransactions: BudgetTransaction[];
 }
@@ -128,7 +127,7 @@ export default function ExecutiveCommandCenter({
   groups, activeWorkout,
   onModal, setCalTasks,
   goalLogs, toggleGoalLog,
-  onDetail, username, onAccountClick,
+  onDetail, username,
   budgetCategories, budgetTransactions,
 }: ExecutiveCommandCenterProps) {
   const now = new Date();
@@ -273,14 +272,6 @@ export default function ExecutiveCommandCenter({
               Today
             </button>
           )}
-          <button
-            type="button"
-            onClick={onAccountClick}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ fontSize: 11, background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}
-            title={`@${username}`}>
-            {username.slice(0, 2).toUpperCase()}
-          </button>
         </div>
       </div>
 

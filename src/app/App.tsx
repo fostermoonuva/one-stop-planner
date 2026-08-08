@@ -4,7 +4,7 @@ import {
   Plus, X, Check, ChevronLeft, ChevronRight,
   Dumbbell, Settings, Trash2,
   Play, MoreHorizontal, Calendar, Wallet,
-  //ChevronDown,//
+  ChevronDown,
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
@@ -1452,34 +1452,81 @@ function AddMenu({ onSelect, onClose }: { onSelect: (m: ModalKind) => void; onCl
 }
 
 // ─── Bottom Nav ───────────────────────────────────────────────────────────────
-function BottomNav({ screen, onChange, onAccountClick }: { screen: Screen; onChange: (s: Screen) => void; onAccountClick: () => void }) {
+function BottomNav({ screen, onChange, onAccountClick, onAddClick, username }: {
+  screen: Screen; onChange: (s: Screen) => void; onAccountClick: () => void;
+  onAddClick: () => void; username: string;
+}) {
+  const [pageMenuOpen, setPageMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const items: { id: Screen; icon: React.ElementType; label: string }[] = [
     { id: "home",    icon: Home,      label: "Home" },
-    { id: "calendar",icon: BarChart3, label: "Calendar"   },
+    { id: "calendar",icon: BarChart3, label: "Calendar" },
     { id: "fitness", icon: Dumbbell,  label: "Fitness" },
-    { id: "goals",   icon: Target,    label: "Goals"   },
-    { id: "budget",  icon: Wallet,    label: "Budget"   },
+    { id: "goals",   icon: Target,    label: "Goals" },
+    { id: "budget",  icon: Wallet,    label: "Budget" },
   ];
+  const current = items.find(i => i.id === screen) ?? items[0];
+  const initials = username.slice(0, 2).toUpperCase();
+
+  // Close page menu on outside click
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setPageMenuOpen(false);
+      }
+    };
+    if (pageMenuOpen) {
+      document.addEventListener("mousedown", onDocClick);
+      return () => document.removeEventListener("mousedown", onDocClick);
+    }
+  }, [pageMenuOpen]);
+
   return (
     <div className="absolute bottom-0 left-0 right-0 px-3 pb-5 pt-3 bg-gradient-to-t from-[#FAF8F5] via-stone-200/60 to-transparent dark:from-[#0f0e0d] dark:via-stone-950/80">
-      <div className="flex items-center justify-around rounded-2xl px-1 py-2 bg-white/80 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-sm dark:shadow-black/20">
-        {items.map(item => {
-          const active = screen === item.id;
-          return (
-            <button key={item.id} onClick={() => onChange(item.id)}
-              className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
-              style={{ backgroundColor: active ? "rgba(99,102,241,.15)" : "transparent" }}>
-              <item.icon size={18} style={{ color: active ? "#6366F1" : "#78716C" }} className="dark:text-stone-400" />
-              <span style={{ fontSize: 9, fontWeight: 700, color: active ? "#6366F1" : "#78716C" }} className="dark:text-stone-400">{item.label}</span>
-            </button>
-          );
-        })}
-        <button key="account" onClick={onAccountClick}
+      <div className="relative flex items-center justify-around rounded-2xl px-1 py-2 bg-white/80 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-sm dark:shadow-black/20 z-30">
+        {/* Left: Account */}
+        <button key="account" onClick={() => { setPageMenuOpen(false); onAccountClick(); }}
           className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
           style={{ backgroundColor: "transparent" }}>
           <div className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ fontSize: 8, background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
-            U
+            style={{ fontSize: 9, background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
+            {initials}
+          </div>
+        </button>
+
+        {/* Middle: Current page + dropdown */}
+        <div className="relative flex-1 flex justify-center" ref={menuRef}>
+          <button onClick={() => setPageMenuOpen(!pageMenuOpen)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all duration-200"
+            style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
+            <current.icon size={16} style={{ color: "#6366F1" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#6366F1" }}>{current.label}</span>
+            <ChevronDown size={12} style={{ color: "#6366F1" }} />
+          </button>
+          {pageMenuOpen && (
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 flex flex-col gap-1 p-2 rounded-2xl bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-lg dark:shadow-black/20">
+              {items.map(item => {
+                const active = screen === item.id;
+                return (
+                  <button key={item.id} onClick={() => { onChange(item.id); setPageMenuOpen(false); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-left transition-all duration-200"
+                    style={{ backgroundColor: active ? "rgba(99,102,241,.15)" : "transparent" }}>
+                    <item.icon size={16} style={{ color: active ? "#6366F1" : "#78716C" }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: active ? "#6366F1" : "#78716C" }}>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right: + */}
+        <button key="add" onClick={() => { setPageMenuOpen(false); onAddClick(); }}
+          className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+          style={{ backgroundColor: "transparent" }}>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}>
+            <Plus size={16} className="text-white" />
           </div>
         </button>
       </div>
@@ -1698,7 +1745,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
         style={{ height: "100dvh", maxHeight: 900, boxShadow: "0 0 60px rgba(0,0,0,.08)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
-          {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} onAccountClick={() => setAccountOpen(true)} budgetCategories={budgetCategories} budgetTransactions={budgetTransactions} />}
+          {screen === "home"   && <ExecutiveCommandCenter {...sharedProps} calMeals={calMeals} activeWorkout={activeWorkout} onModal={openModal} setCalTasks={setCalTasks} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} username={username} budgetCategories={budgetCategories} budgetTransactions={budgetTransactions} />}
           {screen === "fitness" && <FitnessView selectedDate={selectedDate} setSelectedDate={setSelectedDate} calMeals={calMeals} calWorkouts={calWorkouts} activeWorkout={activeWorkout} onModal={openModal} onResumeWorkout={() => setShowWorkoutOverlay(true)} onDetail={openDetail} />}
           {screen === "calendar"   && <MonthView {...sharedProps} onDrillDown={(d: Date) => setDrillDate(d)} />}
 
@@ -1765,16 +1812,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
           {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} />}
         </div>
 
-        {/* FAB */}
-        {!addOpen && !modal && !showWorkoutOverlay && (
-          <button onClick={() => setAddOpen(true)}
-            className="absolute right-5 z-30 rounded-full flex items-center justify-center"
-            style={{ bottom: 82, width: 50, height: 50, background: "linear-gradient(135deg,#6366F1,#8B5CF6)", boxShadow: "0 0 20px rgba(99,102,241,.5), 0 8px 24px rgba(99,102,241,.45)" }}>
-            <Plus size={20} className="text-white" />
-          </button>
-        )}
-
-        <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} />
+        <BottomNav screen={screen} onChange={setScreen} onAddClick={() => setAddOpen(true)} username={username} />
 
         {addOpen && <AddMenu onSelect={openModal} onClose={() => setAddOpen(false)} />}
         {showWorkoutOverlay && activeWorkout && (
