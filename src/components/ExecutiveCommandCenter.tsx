@@ -1,5 +1,5 @@
 import {
-  Dumbbell, Utensils,
+  Dumbbell, Wallet,
   Check, Calendar, Target, Play,
   ChevronLeft, ChevronRight,
 } from "lucide-react";
@@ -7,6 +7,7 @@ import type {
   CalEvent, CalTask, CalMeal, CalWorkout, CalGoal, GoalLog,
   Group, ActiveWO, Subtask, ModalKind, DetailKind,
 } from "../app/App";
+import type { BudgetCategory, BudgetTransaction } from "./BudgetView";
 import {
   dKey, isToday, t2m, m2d, addDays, todayDate,
   eventApplies, taskApplies, goalApplies,
@@ -33,6 +34,8 @@ export interface ExecutiveCommandCenterProps {
   onDetail: (kind: DetailKind, id: string) => void;
   username: string;
   onAccountClick: () => void;
+  budgetCategories: BudgetCategory[];
+  budgetTransactions: BudgetTransaction[];
 }
 
 // ─── Progress Ring ─────────────────────────────────────────────────────────────
@@ -126,6 +129,7 @@ export default function ExecutiveCommandCenter({
   onModal, setCalTasks,
   goalLogs, toggleGoalLog,
   onDetail, username, onAccountClick,
+  budgetCategories, budgetTransactions,
 }: ExecutiveCommandCenterProps) {
   const now = new Date();
   const NowMin = now.getHours() * 60 + now.getMinutes();
@@ -180,7 +184,7 @@ export default function ExecutiveCommandCenter({
 
   const nextItem = upcoming.find(item => item.startMin >= NowMin) ?? upcoming[0];
 
-  // ── Today's Highlights: remaining uncompleted items ───────────────────────────
+  // ── Today's Highlights: remaining uncompleted items ────────────────────────────
   const remainingTasks = [...timedTasks.filter(t => !t.done), ...untimedTasks.filter(t => !t.done)];
   const remainingEvents = eventsOnDay.filter(e => {
     if (!isToday(selectedDate)) return true;
@@ -204,6 +208,23 @@ export default function ExecutiveCommandCenter({
   const totFat  = todaysMeals.reduce((a, m) => a + m.fat, 0);
 
   const CAL_TARGET = 2000, PRO_TARGET = 150, CARB_TARGET = 250, FAT_TARGET = 70;
+
+  // ── Budget Calculations ──────────────────────────────────────────────────────
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const monthBudgetTransactions = budgetTransactions.filter(t => t.date.startsWith(currentMonth));
+  
+  const categorySpending = budgetCategories.map(cat => {
+    const spent = monthBudgetTransactions
+      .filter(t => t.categoryId === cat.id && t.type === "expense")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const remaining = Math.max(0, cat.monthlyCap - spent);
+    const percent = cat.monthlyCap > 0 ? Math.min((spent / cat.monthlyCap) * 100, 100) : 0;
+    return { ...cat, spent, remaining, percent };
+  });
+
+  const totalBudget = budgetCategories.reduce((sum, cat) => sum + cat.monthlyCap, 0);
+  const totalSpent = categorySpending.reduce((sum, cat) => sum + cat.spent, 0);
+  const totalRemaining = totalBudget - totalSpent;
 
   // ── Habit Streaks ────────────────────────────────────────────────────────────
   const todayGoalsWithStreak = todaysGoals.map(g => ({
@@ -304,8 +325,8 @@ export default function ExecutiveCommandCenter({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-stone-900 font-semibold text-sm truncate">{nextItem.title}</p>
-                    <p style={{ fontSize: 11, color: "#78716C", marginTop: 2 }}>
+                    <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{nextItem.title}</p>
+                    <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11, marginTop: 2 }}>
                       {m2d(nextItem.startMin)} – {m2d(nextItem.endMin)} · {nextItem.type}
                     </p>
                   </div>
@@ -318,8 +339,8 @@ export default function ExecutiveCommandCenter({
                 </div>
               ) : (
                 <div className="mt-3 flex flex-col items-center justify-center h-24 gap-2">
-                  <Calendar size={24} style={{ color: "#78716C" }} />
-                  <p style={{ fontSize: 12, color: "#78716C" }}>Nothing coming up next</p>
+                  <Calendar size={24} className="text-stone-500 dark:text-stone-400" style={{ color: "#78716C" }} />
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>Nothing coming up next</p>
                 </div>
               )}
             </div>
@@ -351,7 +372,7 @@ export default function ExecutiveCommandCenter({
                         {t.done && <Check size={10} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900"
+                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100"
                           style={{ textDecoration: t.done ? "line-through" : "none" }}>{t.title}</p>
                       </div>
                       <SubtaskBadge subtasks={t.subtasks} accentColor={gColor(groups, t.groupId)} />
@@ -372,8 +393,8 @@ export default function ExecutiveCommandCenter({
                       <div className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: gColor(groups, e.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900">{e.title}</p>
-                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{e.title}</p>
+                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {m2d(t2m(e.startTime))} – {m2d(t2m(e.endTime))}
                         </p>
                       </div>
@@ -393,8 +414,8 @@ export default function ExecutiveCommandCenter({
                       style={{ cursor: "pointer" }}>
                       <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: "#F97316" }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900">{w.name}</p>
-                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{w.name}</p>
+                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {m2d(t2m(w.startTime))} – {m2d(t2m(w.endTime))}
                         </p>
                       </div>
@@ -408,14 +429,14 @@ export default function ExecutiveCommandCenter({
                       style={{ cursor: "pointer" }}>
                       <Target size={14} style={{ color: gColor(groups, g.groupId) }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-stone-900">{g.title}</p>
-                        <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
+                        <p className="text-sm font-medium text-stone-900 dark:text-stone-100">{g.title}</p>
+                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
                           {g.amount} {g.unit} · {g.days.map(d => DS[d]).join(", ")}
                         </p>
                       </div>
                       <button
                         onClick={e => { e.stopPropagation(); toggleGoalLog(g.id, selectedDate); }}
-                        className="w-6 h-6 rounded-full border flex items-center justify-center flex-shrink-0"
+                        className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
                         style={{ borderColor: gColor(groups, g.groupId) }}>
                         <Check size={10} className="text-white" style={{ display: "none" }} />
                       </button>
@@ -425,25 +446,68 @@ export default function ExecutiveCommandCenter({
               )}
             </div>
 
-            {/* Quick Action Bar */}
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { label: "Task",   icon: Check,    m: "task" as ModalKind,        c: "#10B981" },
-                { label: "Event",  icon: Calendar, m: "event" as ModalKind,       c: "#3B82F6" },
-                { label: "Workout",icon: Dumbbell,  m: "startWorkout" as ModalKind,c: "#F97316" },
-                { label: "Meal",   icon: Utensils,  m: "meal" as ModalKind,        c: "#F59E0B" },
-              ].map(o => (
-                <button
-                  key={o.label}
-                  onClick={() => onModal(o.m)}
-                  className="flex flex-col items-center gap-2 py-3.5 rounded-2xl dark:bg-white/5"
-                  style={{ backgroundColor: "rgba(0,0,0,.04)" }}>
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${o.c}20` }}>
-                    <o.icon size={17} style={{ color: o.c }} />
-                  </div>
-                  <span className="text-stone-900 dark:text-stone-100 font-semibold" style={{ fontSize: 10 }}>{o.label}</span>
-                </button>
-              ))}
+            {/* Budget Highlights */}
+            <div className="rounded-2xl p-4 glass-card">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Wallet size={14} style={{ color: "#6366F1" }} />
+                  <p className="dark:text-stone-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#78716C" }}>
+                    Budget This Month
+                  </p>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Budget</p>
+                  <p className="font-bold" style={{ color: "#6366F1", fontSize: 14 }}>${totalBudget.toFixed(0)}</p>
+                </div>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Spent</p>
+                  <p className="font-bold" style={{ color: "#F43F5E", fontSize: 14 }}>${totalSpent.toFixed(0)}</p>
+                </div>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 9, marginBottom: 2 }}>Left</p>
+                  <p className="font-bold" style={{ color: totalRemaining >= 0 ? "#10B981" : "#EF4444", fontSize: 14 }}>${totalRemaining.toFixed(0)}</p>
+                </div>
+              </div>
+
+              {/* Category Breakdown */}
+              {budgetCategories.length === 0 ? (
+                <div className="text-center py-4">
+                  <Wallet size={24} style={{ color: "#3A3A5A", marginBottom: 6 }} />
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 11 }}>No budget categories yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {categorySpending.map(cat => (
+                    <div key={cat.id} className="rounded-xl p-2.5" style={{ backgroundColor: "rgba(0,0,0,.03)" }}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="text-stone-900 dark:text-stone-100 text-xs font-semibold">{cat.name}</span>
+                        </div>
+                        <span className="text-stone-500 dark:text-stone-400 text-xs font-bold">
+                          ${cat.spent.toFixed(0)} / ${cat.monthlyCap.toFixed(0)}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
+                        <div
+                          className="h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${cat.percent}%`,
+                            backgroundColor: cat.spent > cat.monthlyCap ? "#EF4444" : cat.color
+                          }}
+                        />
+                      </div>
+                      <p className="text-right mt-1 text-stone-500 dark:text-stone-400" style={{ fontSize: 9 }}>
+                        {cat.remaining >= 0 ? `${cat.remaining.toFixed(0)} left` : `${Math.abs(cat.remaining).toFixed(0)} over`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -466,7 +530,7 @@ export default function ExecutiveCommandCenter({
                       <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-stone-900 font-semibold text-sm truncate">{activeWorkout.name}</p>
+                      <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate">{activeWorkout.name}</p>
                       <p style={{ fontSize: 10, color: "#F97316" }}>In progress · {activeWorkout.exercises.length} exercises</p>
                     </div>
                     <Play size={12} style={{ color: "#F97316" }} />
@@ -478,11 +542,11 @@ export default function ExecutiveCommandCenter({
                       <Dumbbell size={14} style={{ color: "#F97316" }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-stone-900 font-semibold text-sm truncate">
+                      <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate">
                         {workoutsOnDay.length > 0 ? workoutsOnDay[0].name : "No workout today"}
                       </p>
                       {workoutsOnDay.length > 0 && (
-                        <p style={{ fontSize: 10, color: "#78716C" }}>
+                        <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10 }}>
                           {m2d(t2m(workoutsOnDay[0].startTime))} – {m2d(t2m(workoutsOnDay[0].endTime))}
                         </p>
                       )}
@@ -492,7 +556,7 @@ export default function ExecutiveCommandCenter({
                 {!activeWorkout && workoutsOnDay.length === 0 && (
                   <div className="rounded-xl p-3 flex items-center gap-3" style={{ backgroundColor: "rgba(249,115,22,.05)" }}>
                     <Dumbbell size={14} style={{ color: "#F97316" }} />
-                    <span style={{ fontSize: 12, color: "#78716C" }}>No workout logged for today</span>
+                    <span className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>No workout logged for today</span>
                   </div>
                 )}
               </div>
@@ -513,8 +577,8 @@ export default function ExecutiveCommandCenter({
               </p>
               {todayGoalsWithStreak.length === 0 ? (
                 <div className="mt-3 flex flex-col items-center justify-center h-20 gap-2">
-                  <Target size={20} style={{ color: "#78716C" }} />
-                  <p style={{ fontSize: 12, color: "#78716C" }}>No daily goals for today</p>
+                  <Target size={20} className="text-stone-500 dark:text-stone-400" style={{ color: "#78716C" }} />
+                  <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 12 }}>No daily goals for today</p>
                 </div>
               ) : (
                 <div className="mt-2 space-y-2">
@@ -525,31 +589,31 @@ export default function ExecutiveCommandCenter({
                        <div key={goal.id} onClick={() => onDetail("goal", goal.id)}
                          className="flex items-center justify-between rounded-xl px-3 py-2.5 glass-card-interactive"
                          style={{ cursor: "pointer", opacity: logged ? 0.7 : 1 }}>
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `${c}25` }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-stone-900 font-semibold text-sm truncate"
-                              style={{ textDecoration: logged ? "line-through" : "none" }}>{goal.title}</p>
-                            <p style={{ fontSize: 10, color: "#78716C", marginTop: 1 }}>
-                              {goal.amount} {goal.unit}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {streak > 0 && (
-                            <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
-                              🔥 {streak} Day{streak !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                          <button
-                            onClick={e => { e.stopPropagation(); toggleGoalLog(goal.id, selectedDate); }}
-                            className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
-                            style={{ borderColor: c, backgroundColor: logged ? c : "transparent" }}>
-                            {logged && <Check size={10} className="text-white" />}
-                          </button>
-                        </div>
-                      </div>
-                    );
+                         <div className="flex items-center gap-2.5 min-w-0">
+                           <div className="w-6 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: `${c}25` }} />
+                           <div className="flex-1 min-w-0">
+                             <p className="text-stone-900 dark:text-stone-100 font-semibold text-sm truncate"
+                               style={{ textDecoration: logged ? "line-through" : "none" }}>{goal.title}</p>
+                             <p className="text-stone-500 dark:text-stone-400" style={{ fontSize: 10, marginTop: 1 }}>
+                               {goal.amount} {goal.unit}
+                             </p>
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-2 flex-shrink-0">
+                           {streak > 0 && (
+                             <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>
+                               🔥 {streak} Day{streak !== 1 ? "s" : ""}
+                             </span>
+                           )}
+                           <button
+                             onClick={e => { e.stopPropagation(); toggleGoalLog(goal.id, selectedDate); }}
+                             className="w-6 h-6 rounded-full border-2 flex items-center justify-center"
+                             style={{ borderColor: c, backgroundColor: logged ? c : "transparent" }}>
+                             {logged && <Check size={10} className="text-white" />}
+                           </button>
+                         </div>
+                       </div>
+                     );
                   })}
                 </div>
               )}

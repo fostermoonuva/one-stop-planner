@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Target } from "lucide-react";
 
-const inputCls = "w-full rounded-xl px-4 py-3 text-white text-sm outline-none";
-const inputSty = { backgroundColor: "rgba(255,255,255,.07)", caretColor: "#6366F1" } as const;
-
 type Mode = "signin" | "signup";
 
 export function AuthScreen({

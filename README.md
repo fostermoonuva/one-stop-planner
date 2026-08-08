@@ -78,16 +78,17 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Feature | Description |
 |---------|-------------|
 | Date header | Day name + month/day; chevrons to change day |
-| Jump to today | “Today” chip when viewing another day |
+| Jump to today | "Today" chip when viewing another day |
 | Week strip | 7-day strip centered on selected date; today outline; selected dot |
 | Filter tabs | All · Events · Tasks · Goals · Active (with count badges) |
 | Timeline | Hour grid (~6 AM–11 PM); overlapping layout; now line on current day |
 | Events on timeline | Colored cards with group color, title, subtitle, time range |
-| Timed tasks | On timeline with checkbox styling; optional “N/M subtasks” subtitle |
-| Untimed tasks | “Due Today” list with complete toggle + subtask progress badge |
+| Timed tasks | On timeline with checkbox styling; optional "N/M subtasks" subtitle |
+| Untimed tasks | "Due Today" list with complete toggle + subtask progress badge |
 | Goals for the day | List with log/unlog for selected date |
 | Active / workouts | In-progress workout banner + completed workouts for the day |
-| Empty state | “Nothing scheduled — tap + to add” |
+| Budget highlights | Always-visible monthly budget summary (total budget, spent, remaining) + per-category spending breakdown with progress bars; shows "No budget categories yet" empty state when no categories exist |
+| Empty state | "Nothing scheduled — tap + to add" |
 
 ### Month
 
@@ -117,7 +118,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Daily totals | Calories + protein / carbs / fat |
 | By meal type | Breakfast, lunch, dinner, snack sections |
 | Log meal | Name, description, type, date/time, macros |
-| Empty slots | “+ Log {type}” dashed buttons |
+| Empty slots | "+ Log {type}" dashed buttons |
 
 ### Budget (new)
 
@@ -164,7 +165,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 |---------|-------------|
 | Sign in | Username + password |
 | Sign up | Username + password + confirm |
-| Setup gate | If env vars missing, shows “Supabase not configured” help |
+| Setup gate | If env vars missing, shows "Supabase not configured" help |
 
 ---
 
@@ -272,11 +273,13 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ```
 [ ] Feature works on localhost
-[ ] README “Current functionality” (and data model if needed) updated
+[ ] README "Current functionality" (and data model if needed) updated
 [ ] Commit includes README.md
 [ ] Push → verify on Vercel / phone
 ```
 
 ### Last major feature documented
 
-- **Unified Fitness Page + Budget Tracking** — merged Workout and Meal tabs into single Fitness page with sub-navigation and cross-domain summary banner; added comprehensive Budget Tracking page with dynamic monthly caps, category allocations, transaction logging, and flexible category assignment.
+- **Budget Highlights on Home Page** — added monthly budget overview to the Today screen showing total budget, spending, and remaining balance, plus per-category breakdown with progress bars and remaining/over budget indicators.
+- **Home page layout refresh** — moved the Budget Highlights block to appear directly under "Today's Highlights" in the left column (previously in the right "Life Snapshot" column); made the budget block always visible even when no categories exist (shows a "No budget categories yet" empty state); removed the Quick Action Bar (quick new task/event/workout/meal buttons) that previously sat under Today's Highlights.
+- **Dark mode card & text support** — workout, nutrition, and budget cards now properly switch to dark backgrounds (`dark:bg-stone-900/60`) with readable text (`dark:text-stone-100`/`dark:text-stone-400`) in dark mode across FitnessView, BudgetView, and the home page ExecutiveCommandCenter.
