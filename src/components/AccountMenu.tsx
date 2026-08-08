@@ -1,6 +1,5 @@
 import { LogOut, X, Moon, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
 
 export type EventAlertOption = "none" | "at_time" | "5min" | "15min" | "30min" | "1hour" | "1day";
 export type TaskAlertOption = "none" | "at_due" | "15min" | "1hour" | "9am_due_date";
