@@ -67,9 +67,10 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Feature | Description |
 |---------|-------------|
-| Bottom navigation | Today · Month · Fitness · Goals · Budget |
+| Bottom navigation | Compact, centered floating dock (Today · Month · Fitness · Goals · Budget) with frosted-glass pill shell (`rounded-full`, `backdrop-blur-xl`) |
 | Floating + button | Opens add menu (Event, Task, Meal, Workout, Goal) |
 | Account menu | Initials on Today → username, sync status, sign out |
+| Dock buttons | 40px account avatar (indigo tint + border), pill-shaped current-tab selector (frosted `slate-800/80`), solid indigo + button with glow |
 | Detail sheets | Tap an item to view, edit, delete, or toggle completion |
 | Theme | **Electric Cobalt & Midnight Navy** — high-contrast Light/Dark modes, frosted glassmorphism (`backdrop-blur-md`), WCAG AA/AAA legible text, Inter font |
 
@@ -281,6 +282,7 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
+- **Floating dock bottom navigation** — converted the bottom bar into a compact, centered, floating dock: frosted-glass pill shell (`bg-slate-900/85 backdrop-blur-xl border-slate-800/80 shadow-2xl rounded-full`), 40px indigo-tinted account avatar with border, frosted pill-shaped current-tab selector (`px-5 py-2.5 bg-slate-800/80`), and a solid indigo + button with glow (`shadow-indigo-500/30`).
 - **Calendar dark mode legibility fix** — Month view day numbers now use `text-slate-100` in dark mode (was hardcoded dark `#1C1917`), out-of-month/past days use `text-slate-600`, selected days use high-contrast `text-white` on an indigo fill, and busy/moderate/light workload cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable in both themes.
 - **Electric Cobalt & Midnight Navy theme system** — complete UI refactor to high-contrast modern theme with dynamic Light/Dark mode tokens (`--bg-primary`, `--card-bg`, `--text-primary`, `--accent-primary`), frosted glassmorphism on all cards, entity-specific accent colors (Events=Cobalt Blue, Tasks=Sky/Sapphire, Goals=Violet, Fitness=Crimson, Meals=Amber, Budget=Emerald), strict visual differentiation between events (solid time-blocks, no checkboxes), timed tasks (floating glass cards with circular checkboxes + due-time badges), and untimed tasks (collapsible "Due Today (Anytime)" section). Removed hardcoded colors in favor of dynamic `text-slate-900 dark:text-slate-50` / `text-slate-600 dark:text-slate-400` utilities for WCAG AA/AAA legibility.
 - **Budget Highlights on Home Page** — added monthly budget overview to the Today screen showing total budget, spending, and remaining balance, plus per-category breakdown with progress bars and remaining/over budget indicators.
