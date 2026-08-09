@@ -626,7 +626,6 @@ function MonthView({
               <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
                 className={[
                   "relative min-h-[54px] h-auto py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-colors",
-                  isSel ? "ring-2 ring-indigo-500" :
                   info?.level === "busy" ? "bg-rose-500/10 dark:bg-rose-500/20" :
                   info?.level === "moderate" ? "bg-amber-500/10 dark:bg-amber-500/20" :
                   info?.level === "light" ? "bg-emerald-500/10 dark:bg-emerald-500/20" :
@@ -637,8 +636,7 @@ function MonthView({
                 <span className={[
                   "absolute top-1 right-1.5 leading-none",
                   "text-[11px]",
-                  isSel || isTod ? "font-bold" : "font-medium",
-                  isSel ? "text-white" :
+                  isTod ? "font-bold" : "font-medium",
                   isPast ? "text-slate-400 dark:text-slate-600" :
                   "text-slate-900 dark:text-slate-100",
                 ].join(" ")}>
