@@ -59,33 +59,38 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 /**
  * Register service worker and get push subscription
  */
-export async function getPushSubscription(): Promise<PushSubscriptionData | null> {
+export async function getPushSubscription(): Promise<PushSubscriptionData> {
   if (!isPushSupported()) {
-    return null;
+    throw new Error("Push notifications not supported in this browser");
   }
 
   try {
     // Wait for service worker to be ready
+    console.log("📱 Waiting for service worker to be ready...");
     const registration = await navigator.serviceWorker.ready;
-    
+    console.log("✅ Service worker ready:", registration.scope);
+
     // Get existing subscription or create new one
     let subscription = await registration.pushManager.getSubscription();
-    
+    console.log("🔍 Existing subscription:", subscription ? "Found" : "None");
+
     if (!subscription) {
       // Create a new subscription
-      // Note: In production, you would use your actual VAPID public key
-      // For now, we'll use a placeholder - this needs to be configured
-      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
       
       if (!vapidPublicKey) {
-        console.warn("VAPID public key not configured. Push notifications will not work.");
-        return null;
+        const error = "Missing VAPID Key: VITE_VAPID_PUBLIC_KEY environment variable is not configured. Please add it to your .env file.";
+        console.error("❌", error);
+        throw new Error(error);
       }
 
+      console.log("🔑 Creating new push subscription with VAPID key...");
+      const vapidKeyArray = urlBase64ToUint8Array(vapidPublicKey);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+        applicationServerKey: vapidKeyArray.buffer as ArrayBuffer,
       });
+      console.log("✅ Push subscription created successfully");
     }
 
     // Extract subscription data
@@ -97,6 +102,10 @@ export async function getPushSubscription(): Promise<PushSubscriptionData | null
       };
     };
 
+    if (!subscriptionData.endpoint || !subscriptionData.keys) {
+      throw new Error("Invalid subscription data: missing endpoint or keys");
+    }
+
     return {
       endpoint: subscriptionData.endpoint,
       keys: {
@@ -105,8 +114,8 @@ export async function getPushSubscription(): Promise<PushSubscriptionData | null
       },
     };
   } catch (error) {
-    console.error("Error getting push subscription:", error);
-    return null;
+    console.error("❌ Error getting push subscription:", error);
+    throw error;
   }
 }
 

@@ -157,20 +157,17 @@ export function AccountMenu({
 
       if (permission === "granted") {
         // Permission granted - now proceed with async operations
-        // Get push subscription
+        // Get push subscription (this will create one if it doesn't exist)
         const subscription = await getPushSubscription();
 
-        if (subscription) {
-          // Save to Supabase
-          await savePushSubscription(userId, subscription);
-          setPushState({
-            enabled: true,
-            permission: "granted",
-            subscription,
-          });
-        } else {
-          setPushError("Failed to create push subscription. Please try again.");
-        }
+        // Save to Supabase
+        await savePushSubscription(userId, subscription);
+        
+        setPushState({
+          enabled: true,
+          permission: "granted",
+          subscription,
+        });
       } else if (permission === "denied") {
         // Permission denied - likely iOS blocking
         setPushError(
@@ -187,7 +184,8 @@ export function AccountMenu({
       }
     } catch (error) {
       console.error("Error toggling push notifications:", error);
-      setPushError("Failed to enable push notifications. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to enable push notifications. Please try again.";
+      setPushError(errorMessage);
     } finally {
       setPushLoading(false);
     }
