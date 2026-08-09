@@ -432,8 +432,8 @@ export default function BudgetView({
         </div>
       )}
 
-      {/* Monthly Summary */}
-      <div className="px-4 flex-shrink-0 space-y-3">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-3" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase" }}>This Month</p>
@@ -593,10 +593,9 @@ export default function BudgetView({
             </div>
           )}
         </div>
-      </div>
 
       {/* Transactions */}
-      <div className="flex-1 overflow-y-auto px-4 pb-28 mt-3" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflowY: "auto" }}>
+      <div className="mt-3">
         <div className="flex items-center justify-between mb-3">
           <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transactions</p>
           <button onClick={() => setShowAddTransaction(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
@@ -673,6 +672,7 @@ export default function BudgetView({
             })}
           </div>
         )}
+      </div>
       </div>
 
       {/* Add Category Modal */}
