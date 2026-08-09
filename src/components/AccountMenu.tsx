@@ -210,33 +210,35 @@ export function AccountMenu({
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-end"
+      className="absolute inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }}
       onClick={onClose}
     >
       <div
-        className="w-full rounded-t-3xl px-5 pb-8 pt-3 glass-modal"
+        className="w-full max-h-[90vh] overflow-y-auto rounded-t-3xl px-5 pb-8 pt-3 glass-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile back button + header */}
-        <div className="flex items-center justify-between mb-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/8 hover:scale-110 transition-transform"
-            aria-label="Back to app"
-          >
-            <ChevronLeft size={20} className="dark:text-slate-400 text-slate-700" />
-          </button>
-          <h2 className="dark:text-slate-50 text-slate-900 font-bold text-base">Account Settings</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/8"
-            aria-label="Close"
-          >
-            <X size={14} className="dark:text-slate-400 text-slate-700" />
-          </button>
+        {/* Sticky header with close button */}
+        <div className="sticky top-0 z-10 pt-1 -mt-1 mb-5 pb-3 glass-modal" style={{ backgroundColor: "inherit" }}>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/8 hover:scale-110 transition-transform"
+              aria-label="Back to app"
+            >
+              <ChevronLeft size={20} className="dark:text-slate-400 text-slate-700" />
+            </button>
+            <h2 className="dark:text-slate-50 text-slate-900 font-bold text-base">Account Settings</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/8"
+              aria-label="Close"
+            >
+              <X size={14} className="dark:text-slate-400 text-slate-700" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 rounded-2xl px-4 py-4 mb-4 glass-card">
@@ -485,6 +487,9 @@ export function AccountMenu({
           <LogOut size={16} />
           Sign out
         </button>
+
+        {/* Bottom padding for safe area on mobile */}
+        <div className="h-4 sm:h-0" />
       </div>
     </div>
   );
