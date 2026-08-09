@@ -520,16 +520,39 @@ function MonthView({
 
     const totalTasks = tasks.length;
     const totalEvents = events.length;
-    const totalCount = totalTasks + totalEvents;
+
+    // Calculate total scheduled hours from events and tasks
+    let totalMinutes = 0;
+
+    // Events have explicit start/end times
+    events.forEach(e => {
+      const startMin = t2m(e.startTime);
+      const endMin = t2m(e.endTime);
+      if (endMin > startMin) {
+        totalMinutes += endMin - startMin;
+      } else if (endMin === startMin) {
+        // Default 1 hour for events with same start/end time
+        totalMinutes += 60;
+      }
+    });
+
+    // Tasks have dueTime but no duration - assume 30 minutes each
+    tasks.forEach(t => {
+      if (t.dueTime) {
+        totalMinutes += 30; // Default task duration
+      }
+    });
+
+    const totalHours = totalMinutes / 60;
 
     let level: "light" | "moderate" | "busy" | null = null;
-    if (totalCount === 0) level = null;
-    else if (totalCount <= 2) level = "light";
-    else if (totalCount <= 5) level = "moderate";
+    if (totalHours === 0) level = null;
+    else if (totalHours <= 2) level = "light";
+    else if (totalHours <= 6) level = "moderate";
     else level = "busy";
 
     const color = level === "light" ? "#22C55E" : level === "moderate" ? "#EAB308" : level === "busy" ? "#EF4444" : null;
-    return { level, color, totalTasks, totalEvents, totalCount };
+    return { level, color, totalTasks, totalEvents, totalHours };
   }
 
   // ── Upcoming Events & Tasks feed (next occurrence of each event/task) ──
@@ -603,12 +626,12 @@ function MonthView({
               <button key={i} onClick={() => { setSelectedDate(d); if (onDrillDown) onDrillDown(d); }}
                 className={[
                   "relative min-h-[54px] h-auto py-1.5 px-1 rounded-xl flex flex-col items-center justify-center transition-colors",
-                  isSel ? "bg-indigo-500 text-white ring-2 ring-indigo-500" :
+                  isSel ? "ring-2 ring-indigo-500" :
                   info?.level === "busy" ? "bg-rose-500/10 dark:bg-rose-500/20" :
                   info?.level === "moderate" ? "bg-amber-500/10 dark:bg-amber-500/20" :
                   info?.level === "light" ? "bg-emerald-500/10 dark:bg-emerald-500/20" :
                   "bg-slate-100/60 dark:bg-white/5",
-                  !isSel && isTod ? "ring-1 ring-indigo-400/30" : "",
+                  isTod ? "ring-1 ring-indigo-400/30" : "",
                 ].join(" ")}>
                 {/* Day number — top-right corner */}
                 <span className={[
@@ -621,26 +644,18 @@ function MonthView({
                 ].join(" ")}>
                   {day}
                 </span>
-                {/* Centered task counter + workload */}
+                {/* Centered event count badge + workload indicator */}
                 <div className="flex flex-col items-center justify-center gap-1">
-                  {info?.totalTasks ? (
+                  {info?.totalEvents > 0 ? (
                     <span className={[
                       "text-[10px] font-semibold px-2 py-0.5 rounded-full leading-tight",
-                      isSel ? "bg-white/20 text-white" : "bg-black/5 dark:bg-white/10 text-slate-900 dark:text-slate-100",
+                      isSel ? "text-white" : "text-slate-900 dark:text-slate-100",
                     ].join(" ")}>
-                      {info.totalTasks} Task{info.totalTasks !== 1 ? "s" : ""}
+                      {info.totalEvents} Event{info.totalEvents !== 1 ? "s" : ""}
                     </span>
                   ) : (
                     <div className="w-1.5 h-1.5 rounded-full"
                       style={{ backgroundColor: color ?? "transparent" }} />
-                  )}
-                  {info?.totalEvents > 0 && (
-                    <span className={[
-                      "text-[9px] font-bold leading-none",
-                      isSel ? "text-white/80" : "text-slate-500 dark:text-slate-400",
-                    ].join(" ")}>
-                      {info.totalEvents} Event{info.totalEvents !== 1 ? "s" : ""}
-                    </span>
                   )}
                 </div>
               </button>
