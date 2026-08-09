@@ -2247,6 +2247,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
               await saveNotificationSettings(userId, settings);
               setNotificationSettings(settings);
             }}
+            userId={userId}
           />
         )}
       </div>

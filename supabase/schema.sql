@@ -116,3 +116,49 @@ create index if not exists idx_alert_notifications_pending
 -- Index for cleaning up old sent alerts
 create index if not exists idx_alert_notifications_cleanup
   on public.alert_notifications (sent, created_at);
+
+-- ─── Push Notification Subscriptions ─────────────────────────────────────────
+
+-- Stores push notification subscriptions for Web Push API
+create table if not exists public.user_push_subscriptions (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  
+  -- Push subscription details
+  endpoint text not null,
+  keys jsonb not null,
+  
+  -- Whether push notifications are enabled for this user
+  enabled boolean not null default true,
+  
+  -- When the subscription was created/last updated
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_push_subscriptions enable row level security;
+
+drop policy if exists "push_subscriptions_select_own" on public.user_push_subscriptions;
+drop policy if exists "push_subscriptions_insert_own" on public.user_push_subscriptions;
+drop policy if exists "push_subscriptions_update_own" on public.user_push_subscriptions;
+drop policy if exists "push_subscriptions_delete_own" on public.user_push_subscriptions;
+
+create policy "push_subscriptions_select_own"
+  on public.user_push_subscriptions for select
+  using (auth.uid() = user_id);
+
+create policy "push_subscriptions_insert_own"
+  on public.user_push_subscriptions for insert
+  with check (auth.uid() = user_id);
+
+create policy "push_subscriptions_update_own"
+  on public.user_push_subscriptions for update
+  using (auth.uid() = user_id);
+
+create policy "push_subscriptions_delete_own"
+  on public.user_push_subscriptions for delete
+  using (auth.uid() = user_id);
+
+-- Index for querying active subscriptions
+create index if not exists idx_user_push_subscriptions_enabled
+  on public.user_push_subscriptions (user_id, enabled)
+  where enabled = true;
