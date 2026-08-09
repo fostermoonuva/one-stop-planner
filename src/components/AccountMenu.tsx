@@ -102,7 +102,18 @@ export function AccountMenu({
       return;
     }
 
-    loadPushSubscription(userId).then(setPushState);
+    // Load subscription from Supabase and check current permission
+    loadPushSubscription(userId).then((state) => {
+      // If browser permission is granted, ensure toggle is not locked
+      if (Notification.permission === "granted") {
+        setPushState({
+          ...state,
+          permission: "granted",
+        });
+      } else {
+        setPushState(state);
+      }
+    });
   }, [userId]);
 
   const handleSave = async () => {
@@ -138,10 +149,15 @@ export function AccountMenu({
         return;
       }
 
-      // Request permission
-      const permission = await requestNotificationPermission();
+      // iOS Safari requirement: Request permission IMMEDIATELY in response to user gesture
+      // This must happen before any async database operations
+      let permission = Notification.permission;
+      if (permission === "default") {
+        permission = await Notification.requestPermission();
+      }
 
       if (permission === "granted") {
+        // Permission granted - now proceed with async operations
         // Get push subscription
         const subscription = await getPushSubscription();
 
@@ -303,6 +319,13 @@ export function AccountMenu({
                 {pushState.permission === "granted"
                   ? "Permission granted but not subscribed"
                   : "Tap to enable push notifications"}
+              </p>
+            )}
+
+            {/* Graceful fallback for non-PWA contexts */}
+            {!pushState.enabled && typeof window !== "undefined" && !("Notification" in window) && (
+              <p className="text-[10px] dark:text-amber-400 text-amber-700 mt-1.5 italic">
+                To enable notifications on iOS, please add this app to your Home Screen first.
               </p>
             )}
           </div>
