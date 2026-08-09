@@ -34,15 +34,15 @@ export function isPushSupported(): boolean {
 /**
  * Get current notification permission status
  */
-export function getNotificationPermission(): NotificationPermission {
-  if (!isPushSupported()) return "denied";
+export function getNotificationPermission(): NotificationPermission | "unsupported" {
+  if (!isPushSupported()) return "unsupported";
   return Notification.permission;
 }
 
 /**
  * Request notification permission from the user
  */
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
+export async function requestNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
   if (!isPushSupported()) {
     return "unsupported";
   }
