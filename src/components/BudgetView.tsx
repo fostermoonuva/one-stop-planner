@@ -14,6 +14,13 @@ export interface BudgetCategory {
   name: string;
   color: string;
   monthlyCap: number;
+  monthKey: string; // Format: "YYYY-MM" for month-specific categories
+}
+
+export interface BudgetCategoryGroupSet {
+  id: string;
+  name: string;
+  categories: Omit<BudgetCategory, "id" | "monthKey">[];
 }
 
 export type PaymentMethod = "debit" | "credit" | "cash";
@@ -36,18 +43,21 @@ interface BudgetViewProps {
   categories: BudgetCategory[];
   transactions: BudgetTransaction[];
   accounts: Account[];
+  categoryGroupSets: BudgetCategoryGroupSet[];
   onAddCategory: (category: BudgetCategory) => void;
   onAddTransaction: (transaction: BudgetTransaction) => void;
   onDeleteCategory: (id: string) => void;
   onDeleteTransaction: (id: string) => void;
   onAddAccount: (account: Account) => void;
   onDeleteAccount: (id: string) => void;
+  onSaveCategoryGroupSet: (set: BudgetCategoryGroupSet) => void;
+  onApplyCategoryGroupSet: (setId: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-const getMonthKey = (date: Date) => {
+export const getMonthKey = (date: Date) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 };
 
@@ -157,18 +167,24 @@ export default function BudgetView({
   categories,
   transactions,
   accounts,
+  categoryGroupSets,
   onAddCategory,
   onAddTransaction,
   onDeleteCategory,
   onDeleteTransaction,
   onAddAccount,
   onDeleteAccount,
+  onSaveCategoryGroupSet,
+  onApplyCategoryGroupSet,
 }: BudgetViewProps) {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
   const [showProjections, setShowProjections] = useState(false);
+  const [showCategoryGroupSets, setShowCategoryGroupSets] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  
+  const [newGroupSetName, setNewGroupSetName] = useState("");
   
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#6366F1");
@@ -254,6 +270,7 @@ export default function BudgetView({
       name: newCategoryName.trim(),
       color: newCategoryColor,
       monthlyCap: Number(newCategoryCap),
+      monthKey: currentMonthKey,
     });
     setNewCategoryName("");
     setNewCategoryCap("");
@@ -296,6 +313,26 @@ export default function BudgetView({
     setNewAccountName("");
     setNewAccountBalance("");
     setShowAccounts(false);
+  };
+
+  const handleSaveCategoryGroupSet = () => {
+    if (!newGroupSetName.trim() || categories.length === 0) return;
+    onSaveCategoryGroupSet({
+      id: Date.now().toString(),
+      name: newGroupSetName.trim(),
+      categories: categories.map(cat => ({
+        name: cat.name,
+        color: cat.color,
+        monthlyCap: cat.monthlyCap,
+      })),
+    });
+    setNewGroupSetName("");
+    setShowCategoryGroupSets(false);
+  };
+
+  const handleApplyCategoryGroupSet = (setId: string) => {
+    onApplyCategoryGroupSet(setId);
+    setShowCategoryGroupSets(false);
   };
 
   const flowTypeColors: Record<FlowType, { bg: string; text: string; label: string }> = {
@@ -506,9 +543,14 @@ export default function BudgetView({
               <PieChart size={14} style={{ color: "#2563EB" }} />
               <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Categories</p>
             </div>
-            <button onClick={() => setShowAddCategory(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
-              <Plus size={12} style={{ color: "#2563EB" }} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setShowCategoryGroupSets(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
+                <Wallet size={12} style={{ color: "#6366F1" }} />
+              </button>
+              <button onClick={() => setShowAddCategory(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
+                <Plus size={12} style={{ color: "#2563EB" }} />
+              </button>
+            </div>
           </div>
           
           {categories.length === 0 ? (
@@ -554,7 +596,7 @@ export default function BudgetView({
       </div>
 
       {/* Transactions */}
-      <div className="flex-1 overflow-y-auto px-4 pb-28 mt-3" style={{ scrollbarWidth: "none" }}>
+      <div className="flex-1 overflow-y-auto px-4 pb-28 mt-3" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflowY: "auto" }}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transactions</p>
           <button onClick={() => setShowAddTransaction(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
@@ -716,6 +758,57 @@ export default function BudgetView({
             </div>
             <input type="date" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" value={newTransactionDate} onChange={e => setNewTransactionDate(e.target.value)} />
             <button onClick={handleAddTransaction} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>Add Transaction</button>
+          </div>
+        </div>
+      )}
+
+      {/* Category Group Sets Modal */}
+      {showCategoryGroupSets && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowCategoryGroupSets(false)}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
+            </div>
+            <h3 className="text-white font-bold text-base">Category Group Sets</h3>
+            
+            {categoryGroupSets.length > 0 && (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {categoryGroupSets.map(set => (
+                  <div key={set.id} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+                    <div className="flex-1">
+                      <p className="text-white text-sm font-semibold">{set.name}</p>
+                      <p className="text-slate-400" style={{ fontSize: 10 }}>{set.categories.length} categories</p>
+                    </div>
+                    <button 
+                      onClick={() => handleApplyCategoryGroupSet(set.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold"
+                      style={{ backgroundColor: "rgba(99,102,241,.2)", color: "#818CF8" }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-white/10">
+              <p className="text-stone-400 mb-3" style={{ fontSize: 11, fontWeight: 600 }}>Save Current Categories as Template</p>
+              <input 
+                className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-3" 
+                placeholder="Template name (e.g., 'Monthly Essentials')" 
+                value={newGroupSetName} 
+                onChange={e => setNewGroupSetName(e.target.value)} 
+                autoFocus 
+              />
+              <button 
+                onClick={handleSaveCategoryGroupSet} 
+                className="w-full py-4 rounded-2xl text-white font-bold text-sm" 
+                style={{ backgroundColor: categories.length > 0 ? "#6366F1" : "rgba(99,102,241,.3)" }}
+                disabled={categories.length === 0}
+              >
+                Save Template ({categories.length} categories)
+              </button>
+            </div>
           </div>
         </div>
       )}

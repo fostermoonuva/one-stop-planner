@@ -2,14 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import {
   Home, BarChart3, Utensils, Target,
   Plus, X, Check, ChevronLeft, ChevronRight,
-  Dumbbell, Settings, Trash2,
+  Dumbbell, Trash2,
   Play, Calendar, Wallet,
   ChevronDown,
 } from "lucide-react";
 import { AccountMenu } from "../components/AccountMenu";
 import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
 import FitnessView from "../components/FitnessView";
-import BudgetView, { BudgetCategory, BudgetTransaction, Account } from "../components/BudgetView";
+import BudgetView, { BudgetCategory, BudgetTransaction, Account, BudgetCategoryGroupSet, getMonthKey } from "../components/BudgetView";
 import type { PlannerDataPayload, NotificationSettings } from "../lib/plannerStorage";
 import {
   loadPlannerData,
@@ -850,11 +850,7 @@ function GoalsView({ calGoals, groups, onModal, goalLogs, toggleGoalLog, onDetai
           <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Goals & Habits</p>
           <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>Your Goals</h1>
         </div>
-        <div className="flex gap-2 mb-1">
-          <button onClick={() => onModal("groups")} className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-            <Settings size={14} style={{ color: "#7878A4" }} />
-          </button>
+        <div className="mb-1">
           <button onClick={() => onModal("goal")} className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ backgroundColor: "rgba(99,102,241,.2)" }}>
             <Plus size={16} style={{ color: "#818CF8" }} />
@@ -2015,6 +2011,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
   const [budgetTransactions, setBudgetTransactions] = useState<BudgetTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categoryGroupSets, setCategoryGroupSets] = useState<BudgetCategoryGroupSet[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
 
@@ -2193,6 +2190,24 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setAccounts(p => p.filter(a => a.id !== id));
   };
 
+  const handleSaveCategoryGroupSet = (set: BudgetCategoryGroupSet) => {
+    setCategoryGroupSets(p => [...p, set]);
+  };
+
+  const handleApplyCategoryGroupSet = (setId: string) => {
+    const set = categoryGroupSets.find(s => s.id === setId);
+    if (!set) return;
+    
+    const currentMonthKey = getMonthKey(new Date());
+    const newCategories = set.categories.map(cat => ({
+      ...cat,
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
+      monthKey: currentMonthKey,
+    }));
+    
+    setBudgetCategories(p => [...p, ...newCategories]);
+  };
+
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
@@ -2217,7 +2232,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             />
           )}
           {screen === "goals"   && <GoalsView calGoals={calGoals} groups={groups} onModal={openModal} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} />}
-          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} accounts={accounts} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} onAddAccount={handleAddAccount} onDeleteAccount={handleDeleteAccount} />}
+          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} accounts={accounts} categoryGroupSets={categoryGroupSets} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} onAddAccount={handleAddAccount} onDeleteAccount={handleDeleteAccount} onSaveCategoryGroupSet={handleSaveCategoryGroupSet} onApplyCategoryGroupSet={handleApplyCategoryGroupSet} />}
         </div>
 
         <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} onAddClick={() => setAddOpen(true)} username={username} />
