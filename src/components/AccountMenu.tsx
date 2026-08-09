@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import {
   isPushSupported,
   getNotificationPermission,
-  requestNotificationPermission,
   getPushSubscription,
   savePushSubscription,
   removePushSubscription,
