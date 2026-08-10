@@ -10,7 +10,7 @@ import {
 export interface Account {
   id: string;
   name: string;
-  type: "checking" | "credit" | "cash" | "hysa" | "investment";
+  type: "checking" | "credit" | "cash" | "hysa" | "investment" | "savings";
   currentBalance: number;
   creditLimit?: number;
   creditUtilizationAlertThreshold?: number;
@@ -44,8 +44,10 @@ export interface BudgetTransaction {
   amount: number;
   description: string;
   date: string;
-  type: "expense" | "income";
+  type: "expense" | "income" | "transfer";
   accountId: string;
+  fromAccountId?: string;
+  toAccountId?: string;
   paymentMethod: PaymentMethod;
   isCreditPaid: boolean;
   flowType: FlowType;
@@ -187,9 +189,17 @@ const calculateAccountBalances = (accounts: Account[], transactions: BudgetTrans
       .filter(t => t.type === "expense")
       .reduce((sum, t) => sum + t.amount, 0);
     
+    // Transfers: money leaving this account (from) decreases balance, money arriving (to) increases balance
+    const transfersOut = transactions
+      .filter(t => t.type === "transfer" && t.fromAccountId === account.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const transfersIn = transactions
+      .filter(t => t.type === "transfer" && t.toAccountId === account.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
     return {
       ...account,
-      currentBalance: account.currentBalance + income - expenses
+      currentBalance: account.currentBalance + income - expenses - transfersOut + transfersIn
     };
   });
 };
@@ -221,7 +231,7 @@ const calculateProjectedNetWorth = (
   const liquidGrowthRate = outlook ? outlook.liquidGrowthRate / 100 : 0.04;
   const investmentGrowthRate = outlook ? outlook.investmentGrowthRate / 100 : 0.08;
   
-  const liquidAccounts = accounts.filter(a => a.type === "checking" || a.type === "hysa" || a.type === "cash");
+  const liquidAccounts = accounts.filter(a => a.type === "checking" || a.type === "hysa" || a.type === "cash" || a.type === "savings");
   const investmentAccounts = accounts.filter(a => a.type === "investment");
   
   const liquidBalance = liquidAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
@@ -283,9 +293,11 @@ export default function BudgetView({
   const [newTransactionAmount, setNewTransactionAmount] = useState("");
   const [newTransactionDescription, setNewTransactionDescription] = useState("");
   const [newTransactionCategory, setNewTransactionCategory] = useState("");
-  const [newTransactionType, setNewTransactionType] = useState<"expense" | "income">("expense");
+  const [newTransactionType, setNewTransactionType] = useState<"expense" | "income" | "transfer">("expense");
   const [newTransactionDate, setNewTransactionDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTransactionAccount, setNewTransactionAccount] = useState("");
+  const [newTransactionFromAccount, setNewTransactionFromAccount] = useState("");
+  const [newTransactionToAccount, setNewTransactionToAccount] = useState("");
   const [newTransactionPaymentMethod, setNewTransactionPaymentMethod] = useState<PaymentMethod>("debit");
   const [newTransactionFlowType, setNewTransactionFlowType] = useState<FlowType>("spending");
   
@@ -446,25 +458,51 @@ export default function BudgetView({
   };
 
   const handleAddTransaction = () => {
-    if (!newTransactionAmount || !newTransactionCategory || !newTransactionAccount) return;
-    onAddTransaction({
-      id: Date.now().toString(),
-      categoryId: newTransactionCategory,
-      amount: Number(newTransactionAmount),
-      description: newTransactionDescription,
-      date: newTransactionDate,
-      type: newTransactionType,
-      accountId: newTransactionAccount,
-      paymentMethod: newTransactionPaymentMethod,
-      isCreditPaid: newTransactionPaymentMethod !== "credit",
-      flowType: newTransactionFlowType,
-    });
+    if (!newTransactionAmount || Number(newTransactionAmount) <= 0) return;
+    
+    if (newTransactionType === "transfer") {
+      // Transfer validation: both accounts required and must differ
+      if (!newTransactionFromAccount || !newTransactionToAccount) return;
+      if (newTransactionFromAccount === newTransactionToAccount) return;
+      
+      onAddTransaction({
+        id: Date.now().toString(),
+        categoryId: newTransactionCategory || "",
+        amount: Number(newTransactionAmount),
+        description: newTransactionDescription,
+        date: newTransactionDate,
+        type: "transfer",
+        accountId: newTransactionFromAccount,
+        fromAccountId: newTransactionFromAccount,
+        toAccountId: newTransactionToAccount,
+        paymentMethod: "debit",
+        isCreditPaid: true,
+        flowType: "saving",
+      });
+    } else {
+      if (!newTransactionCategory || !newTransactionAccount) return;
+      onAddTransaction({
+        id: Date.now().toString(),
+        categoryId: newTransactionCategory,
+        amount: Number(newTransactionAmount),
+        description: newTransactionDescription,
+        date: newTransactionDate,
+        type: newTransactionType,
+        accountId: newTransactionAccount,
+        paymentMethod: newTransactionPaymentMethod,
+        isCreditPaid: newTransactionPaymentMethod !== "credit",
+        flowType: newTransactionFlowType,
+      });
+    }
+    
     setNewTransactionAmount("");
     setNewTransactionDescription("");
     setNewTransactionCategory("");
     setNewTransactionType("expense");
     setNewTransactionDate(new Date().toISOString().split("T")[0]);
     setNewTransactionAccount("");
+    setNewTransactionFromAccount("");
+    setNewTransactionToAccount("");
     setNewTransactionPaymentMethod("debit");
     setNewTransactionFlowType("spending");
     setShowAddTransaction(false);
@@ -820,7 +858,8 @@ export default function BudgetView({
                     <div className="w-2 h-2 rounded-full" style={{ 
                       backgroundColor: account.type === "credit" ? "#EF4444" : 
                                      account.type === "investment" ? "#6366F1" : 
-                                     account.type === "hysa" ? "#10B981" : "#2563EB" 
+                                     account.type === "hysa" ? "#10B981" : 
+                                     account.type === "savings" ? "#14B8A6" : "#2563EB" 
                     }} />
                     <span className="text-slate-900 dark:text-slate-50 text-xs font-semibold">{account.name}</span>
                   </div>
@@ -932,7 +971,10 @@ export default function BudgetView({
               const category = categories.find(c => c.id === t.categoryId);
               const account = accounts.find(a => a.id === t.accountId);
               const isExpense = t.type === "expense";
+              const isTransfer = t.type === "transfer";
               const flowStyle = flowTypeColors[t.flowType];
+              const fromAccount = isTransfer ? accounts.find(a => a.id === t.fromAccountId) : undefined;
+              const toAccount = isTransfer ? accounts.find(a => a.id === t.toAccountId) : undefined;
               
               return (
                 <div 
@@ -942,47 +984,69 @@ export default function BudgetView({
                   style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${category?.color || "#2563EB"}20` }}>
-                      {isExpense ? (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: isTransfer ? "rgba(20,184,166,.15)" : `${category?.color || "#2563EB"}20` }}>
+                      {isTransfer ? (
+                        <ArrowRight size={18} style={{ color: "#14B8A6" }} />
+                      ) : isExpense ? (
                         <TrendingDown size={18} style={{ color: "#E11D48" }} />
                       ) : (
                         <TrendingUp size={18} style={{ color: "#059669" }} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-900 dark:text-slate-50 text-sm font-semibold truncate">{t.description || (isExpense ? "Expense" : "Income")}</p>
+                      <p className="text-slate-900 dark:text-slate-50 text-sm font-semibold truncate">
+                        {isTransfer 
+                          ? `${fromAccount?.name || "From"} ➔ ${toAccount?.name || "To"}`
+                          : (t.description || (isExpense ? "Expense" : "Income"))}
+                      </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {category && (
-                          <div className="flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }} />
-                            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{category.name}</span>
-                          </div>
-                        )}
-                        {account && (
-                          <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>
-                            {paymentMethodIcons[t.paymentMethod]} {account.name}
-                          </span>
-                        )}
-                        <span className="px-1.5 py-0.5 rounded-full" style={{ backgroundColor: flowStyle.bg, color: flowStyle.text, fontSize: 8, fontWeight: 700 }}>
-                          {flowStyle.label}
-                        </span>
-                        {t.paymentMethod === "credit" && (
-                          <span className="px-1.5 py-0.5 rounded-full" style={{ 
-                            backgroundColor: t.isCreditPaid ? "rgba(16,185,129,.15)" : "rgba(234,179,8,.15)",
-                            color: t.isCreditPaid ? "#10B981" : "#EAB308",
-                            fontSize: 8, 
-                            fontWeight: 700 
-                          }}>
-                            {t.isCreditPaid ? "Paid" : "Unpaid"}
-                          </span>
+                        {isTransfer ? (
+                          <>
+                            {category && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }} />
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{category.name}</span>
+                              </div>
+                            )}
+                            <span className="px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(20,184,166,.15)", color: "#14B8A6", fontSize: 8, fontWeight: 700 }}>
+                              Transfer
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {category && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: category.color }} />
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{category.name}</span>
+                              </div>
+                            )}
+                            {account && (
+                              <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>
+                                {paymentMethodIcons[t.paymentMethod]} {account.name}
+                              </span>
+                            )}
+                            <span className="px-1.5 py-0.5 rounded-full" style={{ backgroundColor: flowStyle.bg, color: flowStyle.text, fontSize: 8, fontWeight: 700 }}>
+                              {flowStyle.label}
+                            </span>
+                            {t.paymentMethod === "credit" && (
+                              <span className="px-1.5 py-0.5 rounded-full" style={{ 
+                                backgroundColor: t.isCreditPaid ? "rgba(16,185,129,.15)" : "rgba(234,179,8,.15)",
+                                color: t.isCreditPaid ? "#10B981" : "#EAB308",
+                                fontSize: 8, 
+                                fontWeight: 700 
+                              }}>
+                                {t.isCreditPaid ? "Paid" : "Unpaid"}
+                              </span>
+                            )}
+                          </>
                         )}
                         <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>{t.date}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold flex-shrink-0" style={{ color: isExpense ? "#E11D48" : "#059669", fontSize: 14 }}>
-                      {isExpense ? "-" : "+"}${t.amount.toFixed(2)}
+                    <span className="font-bold flex-shrink-0" style={{ color: isTransfer ? "#14B8A6" : isExpense ? "#E11D48" : "#059669", fontSize: 14 }}>
+                      {isExpense ? "-" : ""}${t.amount.toFixed(2)}
                     </span>
                     <button onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t.id); }} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
                       <MoreHorizontal size={12} style={{ color: "#EF4444" }} />
@@ -1028,56 +1092,99 @@ export default function BudgetView({
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>
             <h3 className="text-white font-bold text-base">New Transaction</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button onClick={() => setNewTransactionType("expense")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "expense" ? "rgba(244,63,94,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "expense" ? "#F43F5E" : "#4E4E72" }}>Expense</button>
               <button onClick={() => setNewTransactionType("income")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "income" ? "rgba(16,185,129,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "income" ? "#10B981" : "#4E4E72" }}>Income</button>
+              <button onClick={() => setNewTransactionType("transfer")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "transfer" ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "transfer" ? "#14B8A6" : "#4E4E72" }}>Transfer</button>
             </div>
             <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" placeholder="Amount ($)" value={newTransactionAmount} onChange={e => setNewTransactionAmount(e.target.value)} autoFocus />
             <input className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" placeholder="Description (optional)" value={newTransactionDescription} onChange={e => setNewTransactionDescription(e.target.value)} />
             
-            <div>
-              <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Account</p>
-              <div className="grid grid-cols-2 gap-2">
-                {accounts.map(acc => (
-                  <button key={acc.id} onClick={() => setNewTransactionAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionAccount === acc.id ? "rgba(37,99,235,.2)" : "rgba(255,255,255,.06)", color: newTransactionAccount === acc.id ? "#2563EB" : "#4E4E72" }}>
-                    {acc.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {newTransactionType === "transfer" ? (
+              <>
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>From Account (Source)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {accounts.map(acc => (
+                      <button key={acc.id} onClick={() => setNewTransactionFromAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionFromAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionFromAccount === acc.id ? "#14B8A6" : "#4E4E72", opacity: newTransactionToAccount === acc.id ? 0.4 : 1 }}>
+                        {acc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <div>
-              <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Payment Method</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(["debit", "credit", "cash"] as PaymentMethod[]).map(method => (
-                  <button key={method} onClick={() => setNewTransactionPaymentMethod(method)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionPaymentMethod === method ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", color: newTransactionPaymentMethod === method ? "#6366F1" : "#4E4E72" }}>
-                    {method === "debit" ? "💳 Debit" : method === "credit" ? "🏦 Credit" : "💵 Cash"}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>To Account (Destination)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {accounts.map(acc => (
+                      <button key={acc.id} onClick={() => setNewTransactionToAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionToAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionToAccount === acc.id ? "#14B8A6" : "#4E4E72", opacity: newTransactionFromAccount === acc.id ? 0.4 : 1 }}>
+                        {acc.name}
+                      </button>
+                    ))}
+                  </div>
+                  {newTransactionFromAccount && newTransactionToAccount && newTransactionFromAccount === newTransactionToAccount && (
+                    <p className="text-red-400 mt-2" style={{ fontSize: 10, fontWeight: 600 }}>From and To accounts must be different</p>
+                  )}
+                </div>
 
-            <div>
-              <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Flow Type</p>
-              <div className="grid grid-cols-2 gap-2">
-                {(["spending", "saving", "investing", "income"] as FlowType[]).map(flow => (
-                  <button key={flow} onClick={() => setNewTransactionFlowType(flow)} className="py-2.5 rounded-xl text-xs font-bold capitalize" style={{ backgroundColor: newTransactionFlowType === flow ? `${flowTypeColors[flow].bg}` : "rgba(255,255,255,.06)", color: newTransactionFlowType === flow ? flowTypeColors[flow].text : "#4E4E72" }}>
-                    {flow}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Tag (optional)</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {currentMonthCategories.map(cat => (
+                      <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Account</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {accounts.map(acc => (
+                      <button key={acc.id} onClick={() => setNewTransactionAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionAccount === acc.id ? "rgba(37,99,235,.2)" : "rgba(255,255,255,.06)", color: newTransactionAccount === acc.id ? "#2563EB" : "#4E4E72" }}>
+                        {acc.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <div>
-              <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
-              <div className="grid grid-cols-2 gap-2">
-                {currentMonthCategories.map(cat => (
-                  <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Payment Method</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["debit", "credit", "cash"] as PaymentMethod[]).map(method => (
+                      <button key={method} onClick={() => setNewTransactionPaymentMethod(method)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionPaymentMethod === method ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", color: newTransactionPaymentMethod === method ? "#6366F1" : "#4E4E72" }}>
+                        {method === "debit" ? "💳 Debit" : method === "credit" ? "🏦 Credit" : "💵 Cash"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Flow Type</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["spending", "saving", "investing", "income"] as FlowType[]).map(flow => (
+                      <button key={flow} onClick={() => setNewTransactionFlowType(flow)} className="py-2.5 rounded-xl text-xs font-bold capitalize" style={{ backgroundColor: newTransactionFlowType === flow ? `${flowTypeColors[flow].bg}` : "rgba(255,255,255,.06)", color: newTransactionFlowType === flow ? flowTypeColors[flow].text : "#4E4E72" }}>
+                        {flow}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {currentMonthCategories.map(cat => (
+                      <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
             <input type="date" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" value={newTransactionDate} onChange={e => setNewTransactionDate(e.target.value)} />
             <button onClick={handleAddTransaction} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>Add Transaction</button>
           </div>
@@ -1100,8 +1207,23 @@ export default function BudgetView({
 
             {/* Transaction Info */}
             <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-              <p className="text-white font-semibold text-sm mb-1">{showTransactionDetail.description || "Transaction"}</p>
-              <p className="text-slate-400" style={{ fontSize: 11 }}>{showTransactionDetail.date} · ${showTransactionDetail.amount.toFixed(2)}</p>
+              <p className="text-white font-semibold text-sm mb-1">
+                {showTransactionDetail.type === "transfer" 
+                  ? (() => {
+                      const fromAcc = accounts.find(a => a.id === showTransactionDetail.fromAccountId);
+                      const toAcc = accounts.find(a => a.id === showTransactionDetail.toAccountId);
+                      return `${fromAcc?.name || "From"} ➔ ${toAcc?.name || "To"}`;
+                    })()
+                  : (showTransactionDetail.description || "Transaction")}
+              </p>
+              <p className="text-slate-400" style={{ fontSize: 11 }}>
+                {showTransactionDetail.date} · ${showTransactionDetail.amount.toFixed(2)}
+                {showTransactionDetail.type === "transfer" && (
+                  <span className="ml-2 px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(20,184,166,.15)", color: "#14B8A6", fontSize: 8, fontWeight: 700 }}>
+                    Transfer
+                  </span>
+                )}
+              </p>
             </div>
 
             {/* Receipt Items */}
@@ -1357,7 +1479,7 @@ export default function BudgetView({
               <div className="mb-2">
                 <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Type</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {(["checking", "credit", "cash", "hysa", "investment"] as Account["type"][]).map(type => (
+                  {(["checking", "credit", "cash", "hysa", "investment", "savings"] as Account["type"][]).map(type => (
                     <button key={type} onClick={() => setNewAccountType(type)} className="py-2 rounded-xl text-xs font-bold capitalize" style={{ backgroundColor: newAccountType === type ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", color: newAccountType === type ? "#6366F1" : "#4E4E72" }}>
                       {type}
                     </button>

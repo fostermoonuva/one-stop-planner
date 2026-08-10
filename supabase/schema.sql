@@ -274,15 +274,17 @@ create table if not exists public.budget_transactions (
   user_id uuid not null references auth.users (id) on delete cascade,
   
   -- Transaction details
-  category_id uuid not null references public.categories (id) on delete cascade,
+  category_id uuid references public.categories (id) on delete cascade,
   amount numeric(10,2) not null,
   description text,
   date date not null,
-  type text not null check (type in ('expense', 'income')),
+  type text not null check (type in ('expense', 'income', 'transfer')),
   
   -- Account and payment
-  account_id uuid not null references public.accounts (id) on delete cascade,
-  payment_method text not null check (payment_method in ('debit', 'credit', 'cash')),
+  account_id uuid references public.accounts (id) on delete cascade,
+  from_account_id uuid references public.accounts (id) on delete cascade,
+  to_account_id uuid references public.accounts (id) on delete cascade,
+  payment_method text check (payment_method in ('debit', 'credit', 'cash')),
   is_credit_paid boolean not null default false,
   
   -- Flow type classification
@@ -290,7 +292,12 @@ create table if not exists public.budget_transactions (
   
   -- Timestamps
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  
+  -- Ensure transfer accounts are different
+  constraint chk_transfer_accounts_differ check (
+    type <> 'transfer' OR (from_account_id IS NOT NULL AND to_account_id IS NOT NULL AND from_account_id <> to_account_id)
+  )
 );
 
 alter table public.budget_transactions enable row level security;
@@ -325,6 +332,15 @@ create index if not exists idx_budget_transactions_date
 
 create index if not exists idx_budget_transactions_category
   on public.budget_transactions (user_id, category_id);
+
+-- Index for transfer queries
+create index if not exists idx_budget_transactions_from_account
+  on public.budget_transactions (user_id, from_account_id)
+  where type = 'transfer';
+
+create index if not exists idx_budget_transactions_to_account
+  on public.budget_transactions (user_id, to_account_id)
+  where type = 'transfer';
 
 -- ─── Transaction Items (Receipt Line Items) ────────────────────────────────────
 
@@ -381,7 +397,7 @@ create table if not exists public.accounts (
   
   -- Account details
   name text not null,
-  type text not null check (type in ('checking', 'credit', 'cash', 'hysa', 'investment')),
+  type text not null check (type in ('checking', 'credit', 'cash', 'hysa', 'investment', 'savings')),
   current_balance numeric(12,2) not null default 0,
   
   -- Credit card specific fields

@@ -1978,6 +1978,16 @@ function applyPlannerPayload(
     setGroups: (v: Group[]) => void;
     setActiveWorkout: (v: ActiveWO | null) => void;
     setShowWorkoutOverlay: (v: boolean) => void;
+    setCategories: (v: Category[]) => void;
+    setMonthlyBudgetCategories: (v: MonthlyBudgetCategory[]) => void;
+    setBudgetCategories: (v: BudgetCategory[]) => void;
+    setBudgetTransactions: (v: BudgetTransaction[]) => void;
+    setAccounts: (v: Account[]) => void;
+    setCategoryGroupSets: (v: CategoryGroupSet[]) => void;
+    setTransactionItems: (v: TransactionItem[]) => void;
+    setOutlookProjection: (v: OutlookProjection | null) => void;
+    setBudgetMetadata: (v: BudgetMetadata | null) => void;
+    setSurplusCarryovers: (v: SurplusCarryover[]) => void;
   },
 ) {
   if (Array.isArray(data.calEvents)) apply.setCalEvents(data.calEvents as CalEvent[]);
@@ -1993,8 +2003,18 @@ function applyPlannerPayload(
     apply.setActiveWorkout(data.activeWorkout as ActiveWO);
     apply.setShowWorkoutOverlay(true);
   }
+  // ── Budget state ──────────────────────────────────────────────────────────
+  if (Array.isArray(data.categories)) apply.setCategories(data.categories as Category[]);
+  if (Array.isArray(data.monthlyBudgetCategories)) apply.setMonthlyBudgetCategories(data.monthlyBudgetCategories as MonthlyBudgetCategory[]);
+  if (Array.isArray(data.budgetCategories)) apply.setBudgetCategories(data.budgetCategories as BudgetCategory[]);
+  if (Array.isArray(data.budgetTransactions)) apply.setBudgetTransactions(data.budgetTransactions as BudgetTransaction[]);
+  if (Array.isArray(data.accounts)) apply.setAccounts(data.accounts as Account[]);
+  if (Array.isArray(data.categoryGroupSets)) apply.setCategoryGroupSets(data.categoryGroupSets as CategoryGroupSet[]);
+  if (Array.isArray(data.transactionItems)) apply.setTransactionItems(data.transactionItems as TransactionItem[]);
+  if (data.outlookProjection) apply.setOutlookProjection(data.outlookProjection as OutlookProjection);
+  if (data.budgetMetadata) apply.setBudgetMetadata(data.budgetMetadata as BudgetMetadata);
+  if (Array.isArray(data.surplusCarryovers)) apply.setSurplusCarryovers(data.surplusCarryovers as SurplusCarryover[]);
 }
-
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App({ userId, username, onSignOut }: AppProps) {
   const [screen, setScreen]       = useState<Screen>("home");
@@ -2049,6 +2069,10 @@ export default function App({ userId, username, onSignOut }: AppProps) {
       const apply = {
         setCalEvents, setCalTasks, setCalMeals, setCalWorkouts, setCalGoals,
         setGoalLogs, setGroups, setActiveWorkout, setShowWorkoutOverlay,
+        setCategories, setMonthlyBudgetCategories, setBudgetCategories,
+        setBudgetTransactions, setAccounts, setCategoryGroupSets,
+        setTransactionItems, setOutlookProjection, setBudgetMetadata,
+        setSurplusCarryovers,
       };
 
       try {
@@ -2115,7 +2139,9 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [loaded, userId, calEvents, calTasks, calMeals, calWorkouts, calGoals, goalLogs, groups, activeWorkout]);
+  }, [loaded, userId, calEvents, calTasks, calMeals, calWorkouts, calGoals, goalLogs, groups, activeWorkout,
+      categories, monthlyBudgetCategories, budgetCategories, budgetTransactions, accounts,
+      categoryGroupSets, transactionItems, outlookProjection, budgetMetadata, surplusCarryovers]);
 
   const openModal = (m: ModalKind) => { setModal(m); setAddOpen(false); };
 
