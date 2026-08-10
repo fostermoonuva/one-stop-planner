@@ -56,7 +56,8 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | **Goal logs** | Per goal + date when completed |
 | **Groups** | Named color tags (School, Work, Personal, Fitness, Food, Wellness by default) |
 | **Active workout** | In-progress session (name, start time, live exercises/sets, optional custom date/time override) |
-| **Budget categories** | Name, color, monthly spending cap |
+| **Categories (global library)** | Name, color, type (expense/income), icon — master list of all budget categories available to assign to any month |
+| **Monthly budget categories** | Month (YYYY-MM), category ID, allocated amount — links a global category to a specific month with its budget cap |
 | **Budget transactions** | Category, amount, description, date, type (expense/income), account, payment method (debit/credit/cash), credit card paid status, flow type (spending/saving/investing/income) |
 | **Accounts** | Name, type (checking/credit/cash/hysa/investment), current balance |
 | **Notification settings** | Per-user default alert rules (event default timing, task default timing, goal daily reminder time, budget alert toggles) |
@@ -74,9 +75,9 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Bottom navigation | Compact, centered floating dock (Today · Month · Fitness · Goals · Budget) with frosted-glass pill shell (`rounded-full`, `backdrop-blur-xl`) |
 | Floating + button | Opens add menu (Event, Task, Meal, Workout, Goal) |
 | Account menu | Initials on Today → username, sync status, sign out |
-| Dock buttons | 40px account avatar (indigo tint + border), pill-shaped current-tab selector (frosted `slate-800/80`), solid indigo + button with glow |
+| Dock buttons | 40px account avatar (forest green tint + border), pill-shaped current-tab selector (frosted dark pine), solid forest green + button with glow |
 | Detail sheets | Tap an item to view, edit, delete, or toggle completion |
-| Theme | **Electric Cobalt & Midnight Navy** — high-contrast Light/Dark modes, frosted glassmorphism (`backdrop-blur-md`), WCAG AA/AAA legible text, Inter font |
+| Theme | **Forest Sage & Natural Slate** — high-contrast Light/Dark modes, frosted glassmorphism (`backdrop-blur-md`), WCAG AA/AAA legible text, Inter font |
 
 ### Today
 
@@ -129,30 +130,28 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Feature | Description |
 |---------|-------------|
-| Day navigation | Prev/next day |
-| Daily totals | Calories + protein / carbs / fat |
-| By meal type | Breakfast, lunch, dinner, snack sections |
-| Log meal | Name, description, type, date/time, macros |
-| Empty slots | "+ Log {type}" dashed buttons |
-
-### Budget
-
-| Feature | Description |
-|---------|-------------|
-| **Month navigation** | Flip through months with prev/next arrows to view historical or plan future budgets |
-| **Monthly summary** | Income, expenses, net balance, daily spending rate, and projected month total |
-| **Pace indicator** | On Track / Near Limit / Over Budget status based on spending rate vs. budget |
-| **Multi-account management** | Add/manage multiple accounts (Checking, HYSA, Credit Cards, Cash, Investment) with live balance tracking |
-| **Account balances** | Auto-updated based on transactions; shows total liquid net worth |
-| **Category budgets** | Create categories with custom colors and monthly spending caps |
-| **Progress bars** | Visual spending progress per category (red when over cap) |
-| **Over-spending alerts** | Automatic flags for categories exceeding their budget |
-| **Transactions** | Log expenses/income with category, amount, description, date, account, payment method, and flow type |
+| **Month navigation** | Flip through current, previous, and future budget months with prev/next arrows |
+| **Dynamic category allocation** | Create and customize budget categories on a month-to-month basis (e.g., add "Frat Dues" for August 2026 without forcing it onto September 2026) |
+| **Global category master library** | Maintain a master list of all historical categories (e.g., "Car", "Utilities") so users can quickly re-add existing categories to any new month |
+| **Automated surplus rollover engine** | Closed/past month net surpluses automatically carry forward as "Previous Surplus" incoming row items for the next month's starting available cash |
+| **4-Pillar Financial Matrix** | Side-by-side comparison of Expected vs. Actual totals for Income, Spend (Expenses), Save (Tax Withholdings), and Invest (Portfolios) |
+| **Monthly summary** | Income, expenses, net balance, daily spending rate, projected month total, and pace indicator (On Track / Near Limit / Over Budget) |
+| **Multi-account management** | Add/manage multiple accounts (Checking, HYSA, Credit Cards, Cash, Investment) with live balance tracking and total liquid net worth |
+| **Account balances** | Auto-updated based on transactions; color-coded by account type |
+| **Transaction itemization** | Each budget category can contain an itemized sub-table of individual transactions (receipt roll-ups) with dynamic summation |
+| **Transaction classifications** | Tag every line item by type: Spending, Saving, Investing, or Income with color-coded badges |
 | **Payment method tagging** | Tag transactions as Debit Card, Credit Card, or Cash |
-| **Credit card tracking** | Mark credit card charges as Paid/Unpaid; visual badges show settlement status |
-| **Flow type classification** | Tag transactions as Pure Spending, Saving, Investing, or Income with color-coded badges |
-| **Wealth projections** | Interactive 1/3/5/10-year net worth projections based on current balances, average surplus, and compound growth |
-| **Delete** | Remove categories, transactions, and accounts |
+| **Credit card reconciliation** | Track individual Credit Card charges in a dedicated ledger, mark as Paid/Cleared or Pending |
+| **Credit utilization guardrails** | Track total Credit Limit and display real-time 10% Credit Utilization alerts with customizable thresholds |
+| **Category group sets** | Save category templates and apply them to future months for quick budget setup |
+| **Progress bars** | Visual spending progress per category (red when over cap) |
+| **Over-spending warnings** | Automatic flags for categories exceeding their budget, displayed prominently mid-month |
+| **Wealth projections (Outlook model)** | Interactive 1/3/5/10-year net worth projections with compound growth, customizable liquid/investment growth rates |
+| **Income milestones** | Support scheduled salary step-ups mapped to future calendar dates (e.g., stipend increases) |
+| **Expense escalation models** | Support variable inflation/escalation rate inputs for future Insurance, Living, Food, and Vehicle costs |
+| **Real-time savings rate tracker** | Calculate total net surplus ratio and display overall Savings Rate percentage |
+| **Budget metadata & audit** | Display Last Updated timestamps (e.g., "Last Update: 7/31/26") and status flags on main summary cards |
+| **Delete** | Remove categories from a month, delete transactions, delete accounts, and manage category templates |
 
 ### Goals
 
@@ -321,13 +320,14 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
+- **Global Category Pool & Month-Specific Category Scoping** — refactored the Budget page category system to use a two-tier architecture. Users now maintain a master library of budget categories (e.g., "Car", "Groceries", "Gym") that persists across all months. Each month maintains its own set of active category assignments with allocated budget amounts via the new `monthly_budget_categories` table. Users can add or remove categories from individual months without deleting them from the global library or affecting past/future months. Added a "Manage Categories" modal (Settings icon) that allows creating new global categories, adding existing categories to the current month, setting budget amounts, and removing categories from the current month. Database schema updated with new `categories` (global library) and `monthly_budget_categories` (month-scoped allocations) tables with proper RLS policies.
 - **Calendar Busy Indicator Based on Scheduled Hours** — updated the Month view workload indicator (green/yellow/red traffic light) to calculate busyness based on total active scheduled hours/duration for the day rather than item count. Events contribute their actual start/end time duration (defaulting to 1 hour if times are identical), while timed tasks contribute 30 minutes each. Thresholds: Light (≤2h), Moderate (≤6h), Busy (>6h). The visible badge on calendar day tiles remains as the count of total events for that day.
 - **Push Notification Subscription Management & Mobile UX Fixes** — added complete Web Push subscription flow in Account Settings. Users can now toggle push notifications ON, which triggers `Notification.requestPermission()`, creates a Push API subscription via Service Worker (`navigator.serviceWorker.ready` → `pushManager.subscribe()`), and saves the subscription (endpoint + keys) to the new `user_push_subscriptions` table in Supabase. If permission is denied (e.g., iOS blocking), an inline alert banner displays instructions to enable notifications in iPhone Settings, and the toggle resets to OFF. A "Send Test Notification" button appears when push is enabled for immediate testing. Fixed mobile navigation lock in Account Settings by adding a prominent back arrow button (←) in the top-left header, keeping the X close button in the top-right, and ensuring the backdrop overlay closes the modal. Added a bottom hint text: "Tap outside or use the back button to return to the app." The sticky bottom navigation bar remains accessible since the modal is a bottom sheet that doesn't cover the full screen.
 - **Strong-style Workout Tracking & Historical Logging** — upgraded the workout tracking system to support mid-session editing. Users can now edit weight, reps, and set types (Normal, Warmup, Drop Set, Failure), delete sets, and reorder exercises while a workout is active. Added support for retroactive logging with custom Date and Time overrides, ensuring workouts appear correctly in history and calendar views regardless of when they were logged.
 - **Calendar View refactor** — redesigned the Month grid so the day number is pinned to the **top-right** of each cell with a centered task-count pill + workload hours; grid cells auto-resize (`min-h` flex) to avoid clipping. Clicking any day opens a **Daily View** bottom sheet with a full 24-hour timeline that **auto-scrolls to 9:00 AM** (you can still scroll up to see 12 AM), plus a **Day Tasks** list. Added an **"Upcoming Events & Tasks"** feed below the grid with a chronological list of next occurrences (date tile, title, Event/Task badge, and "Today"/"Tomorrow"/"Aug 12" labels).
 - **Floating dock bottom navigation** — converted the bottom bar into a compact, centered, floating dock: frosted-glass pill shell (`bg-slate-900/85 backdrop-blur-xl border-slate-800/80 shadow-2xl rounded-full`), 40px indigo-tinted account avatar with border, frosted pill-shaped current-tab selector (`px-5 py-2.5 bg-slate-800/80`), and a solid indigo + button with glow (`shadow-indigo-500/30`).
 - **Calendar dark mode legibility fix** — Month view day numbers now use `text-slate-100` in dark mode (was hardcoded dark `#1C1917`), out-of-month/past days use `text-slate-600`, selected days use high-contrast `text-white` on an indigo fill, and busy/moderate/light workload cells use translucent tints (`bg-rose-500/20`, `bg-amber-500/20`, `bg-emerald-500/20`) so text stays readable in both themes.
-- **Electric Cobalt & Midnight Navy theme system** — complete UI refactor to high-contrast modern theme with dynamic Light/Dark mode tokens (`--bg-primary`, `--card-bg`, `--text-primary`, `--accent-primary`), frosted glassmorphism on all cards, entity-specific accent colors (Events=Cobalt Blue, Tasks=Sky/Sapphire, Goals=Violet, Fitness=Crimson, Meals=Amber, Budget=Emerald), strict visual differentiation between events (solid time-blocks, no checkboxes), timed tasks (floating glass cards with circular checkboxes + due-time badges), and untimed tasks (collapsible "Due Today (Anytime)" section). Removed hardcoded colors in favor of dynamic `text-slate-900 dark:text-slate-50` / `text-slate-600 dark:text-slate-400` utilities for WCAG AA/AAA legibility.
+- **Forest Sage & Natural Slate theme system** — complete UI refactor to an organic forest palette with dynamic Light/Dark mode tokens (`--bg-primary`, `--card-bg`, `--text-primary`, `--accent-primary`). Light mode uses Warm Off-White (`#FAF8F5`) with translucent white glass cards, Deep Forest Charcoal text (`#1C2421`), Soft Sage Grey subtext (`#52605B`), and Deep Forest Green accents (`#2D5A27`). Dark mode uses Deep Pine Obsidian (`#0E1412`) with translucent dark forest glass cards, Soft Crisp Green-White text (`#F0F4F2`), Muted Sage Green subtext, and Vibrant Spring Green accents (`#4ADE80`). Entity accents updated: Events=Deep Forest Green, Tasks/Goals=Natural Slate, Fitness/Meals=Warm Amber, Budget=Emerald. Form inputs use white backgrounds with sage borders in light mode and dark pine with green-tinted borders in dark mode. Removed hardcoded slate/grey colors in favor of dynamic theme tokens for WCAG AA/AAA legibility.
 - **Budget Highlights on Home Page** — added monthly budget overview to the Today screen showing total budget, spending, and remaining balance, plus per-category breakdown with progress bars and remaining/over budget indicators.
 - **Home page layout refresh** — moved the Budget Highlights block to appear directly under "Today's Highlights" in the left column (previously in the right "Life Snapshot" column); made the budget block always visible even when no categories exist (shows a "No budget categories yet" empty state); removed the Quick Action Bar (quick new task/event/workout/meal buttons) that previously sat under Today's Highlights.
 - **Dark mode card & text support** — workout, nutrition, and budget cards now properly switch to dark backgrounds (`dark:bg-stone-900/60`) with readable text (`dark:text-stone-100`/`dark:text-stone-400`) in dark mode across FitnessView, BudgetView, and the home page ExecutiveCommandCenter.

@@ -46,7 +46,7 @@ function ProgressRing({ pct, color, label, subtitle }: {
       <svg viewBox="0 0 36 36" style={{ width: 56, height: 56 }}>
         <path
           d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none" stroke="rgba(15,23,42,.08)" strokeWidth="3.5"
+          fill="none" stroke="rgba(28,36,33,.08)" strokeWidth="3.5"
           className="dark:stroke-white/10"
         />
         <path
@@ -55,10 +55,10 @@ function ProgressRing({ pct, color, label, subtitle }: {
           strokeDasharray={`${pct},100`} strokeLinecap="round"
         />
         <text x="18" y="20.5" fontSize="7" textAnchor="middle"
-          className="dark:fill-slate-50" fill="#0F172A" fontWeight={700}>{pct}%</text>
+          className="dark:fill-[#F0F4F2]" fill="#1C2421" fontWeight={700}>{pct}%</text>
       </svg>
-      <p className="dark:text-slate-400" style={{ fontSize: 11, color: "#475569", marginTop: 6, fontWeight: 700 }}>{label}</p>
-      <p className="dark:text-slate-400" style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>{subtitle}</p>
+      <p className="dark:text-[#6E8C7D]" style={{ fontSize: 11, color: "#52605B", marginTop: 6, fontWeight: 700 }}>{label}</p>
+      <p className="dark:text-[#6E8C7D]" style={{ fontSize: 11, color: "#52605B", marginTop: 2 }}>{subtitle}</p>
     </div>
   );
 }
@@ -96,7 +96,7 @@ function MacroBar({ label, value, target, color }: {
         <span className="dark:text-slate-400" style={{ fontSize: 10, color: "#475569", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
         <span className="dark:text-slate-300" style={{ fontSize: 11, color: "#475569", fontWeight: 700 }}>{value}{target > 0 ? ` / ${target}` : ""}</span>
       </div>
-      <div className="h-2 rounded-full dark:bg-white/10" style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
+      <div className="h-2 rounded-full dark:bg-white/10" style={{ backgroundColor: "rgba(28,36,33,.06)" }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color, minWidth: 2 }} />
       </div>
     </div>
@@ -246,28 +246,28 @@ export default function ExecutiveCommandCenter({
         <div className="flex items-center gap-2">
           <button onClick={() => setSelectedDate(addDays(selectedDate, -1))}
             className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
-            style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
-            <ChevronLeft size={15} className="dark:text-slate-400" style={{ color: "#475569" }} />
+            style={{ backgroundColor: "rgba(28,36,33,.06)" }}>
+            <ChevronLeft size={15} className="dark:text-[#6E8C7D]" style={{ color: "#52605B" }} />
           </button>
           <div>
-            <p className="dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#475569" }}>
+            <p className="dark:text-[#6E8C7D]" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#52605B" }}>
               {DF[selectedDate.getDay()]}
             </p>
-            <h1 className="text-slate-900 dark:text-slate-50 font-bold leading-none" style={{ fontSize: 20 }}>
+            <h1 className="text-[#1C2421] dark:text-[#F0F4F2] font-bold leading-none" style={{ fontSize: 20 }}>
               {MF[selectedDate.getMonth()]} {selectedDate.getDate()}
             </h1>
           </div>
           <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}
             className="w-8 h-8 rounded-full flex items-center justify-center dark:bg-white/10 bg-black/5"
-            style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
-            <ChevronRight size={15} className="dark:text-slate-400" style={{ color: "#475569" }} />
+            style={{ backgroundColor: "rgba(28,36,33,.06)" }}>
+            <ChevronRight size={15} className="dark:text-[#6E8C7D]" style={{ color: "#52605B" }} />
           </button>
         </div>
         <div className="flex items-center gap-2">
           {!isToday(selectedDate) && (
             <button onClick={() => setSelectedDate(todayDate())}
-              className="px-3 py-1.5 rounded-full text-xs font-bold dark:bg-indigo-500/20"
-              style={{ backgroundColor: "rgba(99,102,241,.15)", color: "#6366F1" }}>
+              className="px-3 py-1.5 rounded-full text-xs font-bold dark:bg-[#2D5A27]/20"
+              style={{ backgroundColor: "rgba(45,90,39,.15)", color: "#2D5A27" }}>
               Today
             </button>
           )}
@@ -276,7 +276,7 @@ export default function ExecutiveCommandCenter({
 
       {/* Greeting */}
       <div className="px-5 pb-1 flex-shrink-0">
-        <p className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 18 }}>
+        <p className="text-[#1C2421] dark:text-[#F0F4F2] font-bold" style={{ fontSize: 18 }}>
           {greeting}, {username}
         </p>
       </div>
@@ -284,9 +284,9 @@ export default function ExecutiveCommandCenter({
       {/* ── Metric Rings ── */}
       <div className="px-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-4 px-1">
-          <ProgressRing pct={tasksPct} color="#0284C7" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
-          <ProgressRing pct={goalsPct} color="#7C3AED" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
-          <ProgressRing pct={eventsPct} color="#2563EB" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
+          <ProgressRing pct={tasksPct} color="#78716C" label="Tasks" subtitle={`${completedTasks}/${totalTasks}`} />
+          <ProgressRing pct={goalsPct} color="#78716C" label="Goals" subtitle={`${completedGoals}/${activeGoals}`} />
+          <ProgressRing pct={eventsPct} color="#2D5A27" label="Events" subtitle={`${passedEvents}/${eventCount}`} />
         </div>
       </div>
 

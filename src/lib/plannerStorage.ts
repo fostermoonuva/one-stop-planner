@@ -12,6 +12,13 @@ export interface PlannerDataPayload {
   budgetCategories: unknown[];
   budgetTransactions: unknown[];
   accounts: unknown[];
+  categories: unknown[];
+  monthlyBudgetCategories: unknown[];
+  transactionItems: unknown[];
+  categoryGroupSets: unknown[];
+  outlookProjection: unknown | null;
+  budgetMetadata: unknown | null;
+  surplusCarryovers: unknown[];
 }
 
 export type EventAlertOption = "none" | "at_time" | "5min" | "15min" | "30min" | "1hour" | "1day";

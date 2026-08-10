@@ -244,13 +244,13 @@ export function AccountMenu({
         <div className="flex items-center gap-3 rounded-2xl px-4 py-4 mb-4 glass-card">
           <div
             className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ background: "linear-gradient(135deg,#6366F1,#8B5CF6)" }}
+            style={{ background: "linear-gradient(135deg,#2D5A27,#4ADE80)" }}
           >
             {initials}
           </div>
           <div>
-            <p className="dark:text-stone-100 text-stone-900 font-semibold">@{username}</p>
-            <p style={{ fontSize: 11, color: syncStatus === "error" ? "#EF4444" : darkMode ? "#78716C" : "#78716C" }}>
+            <p className="dark:text-[#F0F4F2] text-[#1C2421] font-semibold">@{username}</p>
+            <p style={{ fontSize: 11, color: syncStatus === "error" ? "#EF4444" : darkMode ? "#6E8C7D" : "#52605B" }}>
               {syncStatus === "saving"
                 ? "Saving…"
                 : syncStatus === "error"
@@ -265,7 +265,7 @@ export function AccountMenu({
           <div className="rounded-2xl p-4 mb-3 dark:bg-white/5 bg-black/3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Bell size={16} className="dark:text-indigo-400 text-indigo-600" />
+                <Bell size={16} className="dark:text-[#4ADE80] text-[#2D5A27]" />
                 <span className="text-sm font-bold dark:text-slate-200 text-slate-800">
                   Push Notifications
                 </span>
@@ -276,7 +276,7 @@ export function AccountMenu({
                 disabled={pushLoading}
                 className={`relative w-12 h-7 rounded-full transition-colors ${
                   pushState.enabled
-                    ? "bg-indigo-600"
+                    ? "bg-[#2D5A27]"
                     : pushState.permission === "denied"
                     ? "bg-red-500/50"
                     : "dark:bg-white/10 bg-black/10"
@@ -306,7 +306,7 @@ export function AccountMenu({
                 type="button"
                 onClick={handleTestNotification}
                 disabled={pushLoading}
-                className="w-full py-2.5 rounded-xl text-xs font-bold dark:bg-indigo-500/20 bg-indigo-500/15 dark:text-indigo-400 text-indigo-600 hover:dark:bg-indigo-500/30 hover:bg-indigo-500/25 transition-colors disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl text-xs font-bold dark:bg-[#2D5A27]/20 bg-[#2D5A27]/15 dark:text-[#4ADE80] text-[#2D5A27] hover:dark:bg-[#2D5A27]/30 hover:bg-[#2D5A27]/25 transition-colors disabled:opacity-50"
               >
                 {testNotificationSent ? "✓ Test notification sent!" : pushLoading ? "Sending..." : "Send Test Notification"}
               </button>
@@ -333,7 +333,7 @@ export function AccountMenu({
         <button
           type="button"
           onClick={() => setShowNotifications(!showNotifications)}
-          className="w-full flex items-center justify-between py-3.5 rounded-2xl font-bold text-sm mb-2 dark:bg-indigo-500/20 bg-indigo-500/15 dark:text-indigo-400 text-indigo-600"
+          className="w-full flex items-center justify-between py-3.5 rounded-2xl font-bold text-sm mb-2 dark:bg-[#2D5A27]/20 bg-[#2D5A27]/15 dark:text-[#4ADE80] text-[#2D5A27]"
         >
           <span className="flex items-center gap-2">
             <Bell size={16} />
@@ -412,7 +412,7 @@ export function AccountMenu({
                   />
                   <div
                     className="w-10 h-6 rounded-full transition-colors"
-                    style={{ backgroundColor: localSettings.budgetAlert80Percent ? "#6366F1" : "rgba(255,255,255,.2)" }}
+                    style={{ backgroundColor: localSettings.budgetAlert80Percent ? "#2D5A27" : "rgba(255,255,255,.2)" }}
                   >
                     <div
                       className="w-4 h-4 rounded-full bg-white shadow-sm transition-transform"
@@ -435,7 +435,7 @@ export function AccountMenu({
                   />
                   <div
                     className="w-10 h-6 rounded-full transition-colors"
-                    style={{ backgroundColor: localSettings.budgetAlertUpcomingBills ? "#6366F1" : "rgba(255,255,255,.2)" }}
+                    style={{ backgroundColor: localSettings.budgetAlertUpcomingBills ? "#2D5A27" : "rgba(255,255,255,.2)" }}
                   >
                     <div
                       className="w-4 h-4 rounded-full bg-white shadow-sm transition-transform"
@@ -452,7 +452,7 @@ export function AccountMenu({
                 onClick={handleSave}
                 disabled={saving}
                 className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-50"
-                style={{ backgroundColor: "#6366F1" }}
+                style={{ backgroundColor: "#2D5A27" }}
               >
                 {saving ? "Saving…" : "Save Preferences"}
               </button>
@@ -463,7 +463,7 @@ export function AccountMenu({
         <button
           type="button"
           onClick={onToggleDarkMode}
-          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm mb-2 dark:bg-indigo-500/20 bg-indigo-500/15 dark:text-indigo-400 text-indigo-600"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm mb-2 dark:bg-[#2D5A27]/20 bg-[#2D5A27]/15 dark:text-[#4ADE80] text-[#2D5A27]"
         >
           <Moon size={16} />
           {darkMode ? "Light Mode" : "Dark Mode"}

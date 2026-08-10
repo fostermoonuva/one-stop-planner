@@ -1,26 +1,38 @@
 import { useState, useMemo } from "react";
-import { Wallet, Plus, TrendingUp, TrendingDown, MoreHorizontal, PieChart, ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, Calculator, TrendingUp as TrendingUpIcon } from "lucide-react";
+import { 
+  Wallet, Plus, TrendingUp, TrendingDown, MoreHorizontal, PieChart, 
+  ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, 
+  Calculator, TrendingUp as TrendingUpIcon, Settings, X, CreditCard,
+  Receipt, Target, ArrowRight, Clock, Shield
+} from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Enhanced Types ───────────────────────────────────────────────────────────
 export interface Account {
   id: string;
   name: string;
   type: "checking" | "credit" | "cash" | "hysa" | "investment";
   currentBalance: number;
+  creditLimit?: number;
+  creditUtilizationAlertThreshold?: number;
 }
 
-export interface BudgetCategory {
+export interface Category {
   id: string;
   name: string;
   color: string;
-  monthlyCap: number;
-  monthKey: string; // Format: "YYYY-MM" for month-specific categories
+  type: "expense" | "income";
+  icon?: string;
 }
 
-export interface BudgetCategoryGroupSet {
+export interface BudgetCategory extends Category {
+  monthlyCap: number;
+}
+
+export interface MonthlyBudgetCategory {
   id: string;
-  name: string;
-  categories: Omit<BudgetCategory, "id" | "monthKey">[];
+  categoryId: string;
+  monthKey: string;
+  allocatedAmount: number;
 }
 
 export type PaymentMethod = "debit" | "credit" | "cash";
@@ -39,19 +51,75 @@ export interface BudgetTransaction {
   flowType: FlowType;
 }
 
+export interface TransactionItem {
+  id: string;
+  transactionId: string;
+  description: string;
+  amount: number;
+  flowType: FlowType;
+}
+
+export interface CategoryGroupSet {
+  id: string;
+  name: string;
+  categories: { name: string; color: string; monthlyCap: number }[];
+}
+
+export interface IncomeMilestone {
+  date: string; // "YYYY-MM"
+  amount: number;
+}
+
+export interface OutlookProjection {
+  incomeMilestones: IncomeMilestone[];
+  expenseEscalationRates: Record<string, number>;
+  liquidGrowthRate: number;
+  investmentGrowthRate: number;
+}
+
+export interface BudgetMetadata {
+  lastUpdatedByMonth: Record<string, string>; // "YYYY-MM" -> ISO timestamp
+  lastBudgetUpdate: string;
+}
+
+export interface SurplusCarryover {
+  id: string;
+  fromMonth: string;
+  toMonth: string;
+  amount: number;
+  applied: boolean;
+}
+
 interface BudgetViewProps {
-  categories: BudgetCategory[];
+  categories: Category[];
+  monthlyBudgetCategories: MonthlyBudgetCategory[];
   transactions: BudgetTransaction[];
   accounts: Account[];
-  categoryGroupSets: BudgetCategoryGroupSet[];
-  onAddCategory: (category: BudgetCategory) => void;
-  onAddTransaction: (transaction: BudgetTransaction) => void;
+  categoryGroupSets: CategoryGroupSet[];
+  transactionItems: TransactionItem[];
+  outlookProjection: OutlookProjection | null;
+  budgetMetadata: BudgetMetadata | null;
+  surplusCarryovers: SurplusCarryover[];
+  
+  // Callbacks
+  onAddCategory: (category: Category) => void;
+  onAddMonthlyCategory: (monthlyCat: MonthlyBudgetCategory) => void;
+  onUpdateMonthlyCategory: (monthlyCat: MonthlyBudgetCategory) => void;
+  onRemoveMonthlyCategory: (monthlyCatId: string) => void;
   onDeleteCategory: (id: string) => void;
+  onAddTransaction: (transaction: BudgetTransaction) => void;
   onDeleteTransaction: (id: string) => void;
+  onAddTransactionItem: (item: TransactionItem) => void;
+  onDeleteTransactionItem: (id: string) => void;
   onAddAccount: (account: Account) => void;
   onDeleteAccount: (id: string) => void;
-  onSaveCategoryGroupSet: (set: BudgetCategoryGroupSet) => void;
+  onUpdateAccount: (account: Account) => void;
+  onSaveCategoryGroupSet: (set: CategoryGroupSet) => void;
   onApplyCategoryGroupSet: (setId: string) => void;
+  onUpdateOutlookProjection: (projection: OutlookProjection) => void;
+  onUpdateBudgetMetadata: (metadata: BudgetMetadata) => void;
+  onCreateSurplusCarryover: (carryover: SurplusCarryover) => void;
+  onMarkSurplusApplied: (carryoverId: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,12 +148,12 @@ const getDaysElapsed = (monthKey: string) => {
   const [year, month] = monthKey.split("-").map(Number);
   const today = new Date();
   if (today.getFullYear() !== year || today.getMonth() + 1 !== month) {
-    return getDaysInMonth(monthKey); // Past month - all days elapsed
+    return getDaysInMonth(monthKey);
   }
   return today.getDate();
 };
 
-const calculateDailySpendingRate = (transactions: BudgetTransaction[], monthKey: string, categories: BudgetCategory[]) => {
+const calculateDailySpendingRate = (transactions: BudgetTransaction[], monthKey: string, monthlyCats: MonthlyBudgetCategory[], categories: Category[]) => {
   const monthTrans = getMonthTransactions(transactions, monthKey);
   const totalSpent = monthTrans
     .filter(t => t.type === "expense")
@@ -98,16 +166,20 @@ const calculateDailySpendingRate = (transactions: BudgetTransaction[], monthKey:
   
   const dailyRate = totalSpent / daysElapsed;
   const projectedMonthly = dailyRate * daysInMonth;
-  const totalBudget = categories.reduce((sum, cat) => sum + cat.monthlyCap, 0);
+  
+  const totalBudget = monthlyCats.reduce((sum, mc) => {
+    const cat = categories.find(c => c.id === mc.categoryId);
+    return sum + (cat && cat.type === "expense" ? mc.allocatedAmount : 0);
+  }, 0);
   
   return { current: dailyRate, projected: projectedMonthly, totalBudget };
 };
 
-const calculateAccountBalances = (accounts: Account[], transactions: BudgetTransaction[], monthKey: string) => {
-  const monthTrans = getMonthTransactions(transactions, monthKey);
-  
+const calculateAccountBalances = (accounts: Account[], transactions: BudgetTransaction[]) => {
+  // Use ALL transactions across all months to calculate true account balances
+  // The account's currentBalance is the starting balance, and we adjust it with all historical transactions
   return accounts.map(account => {
-    const accountTrans = monthTrans.filter(t => t.accountId === account.id);
+    const accountTrans = transactions.filter(t => t.accountId === account.id);
     const income = accountTrans
       .filter(t => t.type === "income")
       .reduce((sum, t) => sum + t.amount, 0);
@@ -122,7 +194,12 @@ const calculateAccountBalances = (accounts: Account[], transactions: BudgetTrans
   });
 };
 
-const calculateProjectedNetWorth = (accounts: Account[], transactions: BudgetTransaction[], years: number) => {
+const calculateProjectedNetWorth = (
+  accounts: Account[], 
+  transactions: BudgetTransaction[], 
+  years: number,
+  outlook: OutlookProjection | null
+) => {
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
   
   // Calculate average monthly surplus from last 3 months
@@ -140,9 +217,9 @@ const calculateProjectedNetWorth = (accounts: Account[], transactions: BudgetTra
   
   const avgMonthlySurplus = monthlySurpluses.reduce((a, b) => a + b, 0) / monthlySurpluses.length;
   
-  // Compound growth assumptions
-  const liquidGrowthRate = 0.04; // 4% for cash/savings
-  const investmentGrowthRate = 0.08; // 8% for investments
+  // Use custom growth rates if available
+  const liquidGrowthRate = outlook ? outlook.liquidGrowthRate / 100 : 0.04;
+  const investmentGrowthRate = outlook ? outlook.investmentGrowthRate / 100 : 0.08;
   
   const liquidAccounts = accounts.filter(a => a.type === "checking" || a.type === "hysa" || a.type === "cash");
   const investmentAccounts = accounts.filter(a => a.type === "investment");
@@ -151,8 +228,10 @@ const calculateProjectedNetWorth = (accounts: Account[], transactions: BudgetTra
   const investmentBalance = investmentAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
   
   // Future value with compound interest
-  const futureLiquid = liquidBalance * Math.pow(1 + liquidGrowthRate, years) + (avgMonthlySurplus * 12 * years * (1 + liquidGrowthRate * years / 2));
-  const futureInvestment = investmentBalance * Math.pow(1 + investmentGrowthRate, years) + (avgMonthlySurplus * 0.3 * 12 * years * Math.pow(1 + investmentGrowthRate, years / 2));
+  const futureLiquid = liquidBalance * Math.pow(1 + liquidGrowthRate, years) + 
+                       (avgMonthlySurplus * 12 * years * (1 + liquidGrowthRate * years / 2));
+  const futureInvestment = investmentBalance * Math.pow(1 + investmentGrowthRate, years) + 
+                           (avgMonthlySurplus * 0.3 * 12 * years * Math.pow(1 + investmentGrowthRate, years / 2));
   
   return {
     total: futureLiquid + futureInvestment,
@@ -162,33 +241,44 @@ const calculateProjectedNetWorth = (accounts: Account[], transactions: BudgetTra
   };
 };
 
-// ─── Budget View ─────────────────────────────────────────────────────────────
+// ─── Budget View ──────────────────────────────────────────────────────────────
 export default function BudgetView({
   categories,
+  monthlyBudgetCategories,
   transactions,
   accounts,
   categoryGroupSets,
+  transactionItems,
+  outlookProjection,
+  budgetMetadata,
+  surplusCarryovers,
   onAddCategory,
+  onAddMonthlyCategory,
+  onUpdateMonthlyCategory,
+  onRemoveMonthlyCategory,
   onAddTransaction,
-  onDeleteCategory,
   onDeleteTransaction,
+  onAddTransactionItem,
+  onDeleteTransactionItem,
   onAddAccount,
   onDeleteAccount,
   onSaveCategoryGroupSet,
   onApplyCategoryGroupSet,
+  onUpdateOutlookProjection,
 }: BudgetViewProps) {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
   const [showProjections, setShowProjections] = useState(false);
-  const [showCategoryGroupSets, setShowCategoryGroupSets] = useState(false);
+  const [showCategoryGroupSets, setShowCategorySets] = useState(false);
+  const [showManageCategories, setShowManageCategories] = useState(false);
+  const [showTransactionDetail, setShowTransactionDetail] = useState<BudgetTransaction | null>(null);
+  const [showOutlookSettings, setShowOutlookSettings] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   
   const [newGroupSetName, setNewGroupSetName] = useState("");
-  
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#6366F1");
-  const [newCategoryCap, setNewCategoryCap] = useState("");
   
   const [newTransactionAmount, setNewTransactionAmount] = useState("");
   const [newTransactionDescription, setNewTransactionDescription] = useState("");
@@ -202,10 +292,66 @@ export default function BudgetView({
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountType, setNewAccountType] = useState<Account["type"]>("checking");
   const [newAccountBalance, setNewAccountBalance] = useState("");
+  const [newAccountCreditLimit, setNewAccountCreditLimit] = useState("");
+
+  const [newTransactionItemDescription, setNewTransactionItemDescription] = useState("");
+  const [newTransactionItemAmount, setNewTransactionItemAmount] = useState("");
+  const [newTransactionItemFlowType, setNewTransactionItemFlowType] = useState<FlowType>("spending");
+
+  const [outlookLiquidRate, setOutlookLiquidRate] = useState(outlookProjection?.liquidGrowthRate.toString() || "4");
+  const [outlookInvestmentRate, setOutlookInvestmentRate] = useState(outlookProjection?.investmentGrowthRate.toString() || "8");
 
   const currentMonthKey = getMonthKey(currentMonth);
   const monthTransactions = getMonthTransactions(transactions, currentMonthKey);
   
+  // Get monthly category allocations for current month
+  const currentMonthCategories = useMemo(() => {
+    return monthlyBudgetCategories
+      .filter(mc => mc.monthKey === currentMonthKey)
+      .map(mc => {
+        const category = categories.find(c => c.id === mc.categoryId);
+        if (!category) return null;
+        return {
+          ...category,
+          monthlyId: mc.id,
+          monthlyCap: mc.allocatedAmount,
+        };
+      })
+      .filter((cat): cat is Category & { monthlyId: string; monthlyCap: number } => cat !== null);
+  }, [monthlyBudgetCategories, currentMonthKey, categories]);
+
+  // ─── 4-Pillar Financial Matrix ─────────────────────────────────────────────
+  const pillarData = useMemo(() => {
+    const income = monthTransactions
+      .filter(t => t.type === "income")
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expenses = monthTransactions
+      .filter(t => t.type === "expense" && t.flowType === "spending")
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const savings = monthTransactions
+      .filter(t => t.type === "expense" && t.flowType === "saving")
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const investments = monthTransactions
+      .filter(t => t.type === "expense" && t.flowType === "investing")
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Previous surplus carryover
+    const previousSurplus = surplusCarryovers
+      .filter(sc => sc.toMonth === currentMonthKey && !sc.applied)
+      .reduce((sum, sc) => sum + sc.amount, 0);
+
+    return {
+      income: { expected: currentMonthCategories.filter(c => c.type === "income").reduce((s, c) => s + c.monthlyCap, 0), actual: income },
+      spend: { expected: currentMonthCategories.filter(c => c.type === "expense").reduce((s, c) => s + c.monthlyCap, 0), actual: expenses },
+      save: { expected: 0, actual: savings },
+      invest: { expected: 0, actual: investments },
+      previousSurplus
+    };
+  }, [monthTransactions, currentMonthCategories, surplusCarryovers, currentMonthKey]);
+
   const totalExpenses = monthTransactions
     .filter(t => t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
@@ -220,17 +366,17 @@ export default function BudgetView({
 
   // Financial analytics
   const spendingAnalytics = useMemo(() => {
-    return calculateDailySpendingRate(transactions, currentMonthKey, categories);
-  }, [transactions, currentMonthKey, categories]);
+    return calculateDailySpendingRate(transactions, currentMonthKey, monthlyBudgetCategories, categories);
+  }, [transactions, currentMonthKey, monthlyBudgetCategories, categories]);
 
   const accountBalances = useMemo(() => {
-    return calculateAccountBalances(accounts, transactions, currentMonthKey);
-  }, [accounts, transactions, currentMonthKey]);
+    return calculateAccountBalances(accounts, transactions);
+  }, [accounts, transactions]);
 
   const totalAccountBalance = accountBalances.reduce((sum, acc) => sum + acc.currentBalance, 0);
 
   const overspentCategories = useMemo(() => {
-    return categories
+    return currentMonthCategories
       .map(cat => ({
         ...cat,
         spent: getCategoryTotal(transactions, cat.id, currentMonthKey),
@@ -238,12 +384,12 @@ export default function BudgetView({
       }))
       .filter(cat => cat.over > 0)
       .sort((a, b) => b.over - a.over);
-  }, [categories, transactions, currentMonthKey]);
+  }, [currentMonthCategories, transactions, currentMonthKey]);
 
   const [projectionYears, setProjectionYears] = useState(5);
   const projections = useMemo(() => {
-    return calculateProjectedNetWorth(accountBalances, transactions, projectionYears);
-  }, [accountBalances, transactions, projectionYears]);
+    return calculateProjectedNetWorth(accountBalances, transactions, projectionYears, outlookProjection);
+  }, [accountBalances, transactions, projectionYears, outlookProjection]);
 
   const paceStatus = useMemo(() => {
     const { projected, totalBudget } = spendingAnalytics;
@@ -255,6 +401,30 @@ export default function BudgetView({
     return { status: "on-track", label: "On Track", color: "#10B981" };
   }, [spendingAnalytics]);
 
+  // Credit card utilization alerts
+  const creditCardAlerts = useMemo(() => {
+    return accountBalances
+      .filter(acc => acc.type === "credit" && acc.creditLimit)
+      .map(acc => {
+        const utilization = Math.abs(acc.currentBalance) / acc.creditLimit! * 100;
+        const threshold = acc.creditUtilizationAlertThreshold || 10;
+        return {
+          account: acc,
+          utilization,
+          threshold,
+          isOverThreshold: utilization > threshold
+        };
+      });
+  }, [accountBalances]);
+
+  // Get last updated timestamp for current month
+  const lastUpdated = budgetMetadata?.lastUpdatedByMonth[currentMonthKey];
+  const lastUpdatedFormatted = lastUpdated ? new Date(lastUpdated).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  }) : null;
+
   const handlePrevMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
@@ -264,16 +434,14 @@ export default function BudgetView({
   };
 
   const handleAddCategory = () => {
-    if (!newCategoryName.trim() || !newCategoryCap) return;
+    if (!newCategoryName.trim()) return;
     onAddCategory({
       id: Date.now().toString(),
       name: newCategoryName.trim(),
       color: newCategoryColor,
-      monthlyCap: Number(newCategoryCap),
-      monthKey: currentMonthKey,
+      type: "expense",
     });
     setNewCategoryName("");
-    setNewCategoryCap("");
     setShowAddCategory(false);
   };
 
@@ -309,30 +477,78 @@ export default function BudgetView({
       name: newAccountName.trim(),
       type: newAccountType,
       currentBalance: Number(newAccountBalance),
+      creditLimit: newAccountType === "credit" ? Number(newAccountCreditLimit) || undefined : undefined,
     });
     setNewAccountName("");
     setNewAccountBalance("");
+    setNewAccountCreditLimit("");
     setShowAccounts(false);
   };
 
   const handleSaveCategoryGroupSet = () => {
-    if (!newGroupSetName.trim() || categories.length === 0) return;
+    if (!newGroupSetName.trim() || currentMonthCategories.length === 0) return;
     onSaveCategoryGroupSet({
       id: Date.now().toString(),
       name: newGroupSetName.trim(),
-      categories: categories.map(cat => ({
+      categories: currentMonthCategories.map(cat => ({
         name: cat.name,
         color: cat.color,
         monthlyCap: cat.monthlyCap,
       })),
     });
     setNewGroupSetName("");
-    setShowCategoryGroupSets(false);
+    setShowCategorySets(false);
   };
 
   const handleApplyCategoryGroupSet = (setId: string) => {
     onApplyCategoryGroupSet(setId);
-    setShowCategoryGroupSets(false);
+    setShowCategorySets(false);
+  };
+
+  const handleAddCategoryToMonth = (categoryId: string, allocatedAmount: number) => {
+    onAddMonthlyCategory({
+      id: Date.now().toString(),
+      categoryId,
+      monthKey: currentMonthKey,
+      allocatedAmount,
+    });
+  };
+
+  const handleUpdateMonthlyCategory = (monthlyCatId: string, allocatedAmount: number) => {
+    const monthlyCat = monthlyBudgetCategories.find(mc => mc.id === monthlyCatId);
+    if (monthlyCat) {
+      onUpdateMonthlyCategory({
+        ...monthlyCat,
+        allocatedAmount,
+      });
+    }
+  };
+
+  const handleRemoveFromMonth = (monthlyCatId: string) => {
+    onRemoveMonthlyCategory(monthlyCatId);
+  };
+
+  const handleAddTransactionItem = () => {
+    if (!showTransactionDetail || !newTransactionItemDescription || !newTransactionItemAmount) return;
+    onAddTransactionItem({
+      id: Date.now().toString(),
+      transactionId: showTransactionDetail.id,
+      description: newTransactionItemDescription,
+      amount: Number(newTransactionItemAmount),
+      flowType: newTransactionItemFlowType,
+    });
+    setNewTransactionItemDescription("");
+    setNewTransactionItemAmount("");
+  };
+
+  const handleSaveOutlookSettings = () => {
+    if (!outlookProjection) return;
+    onUpdateOutlookProjection({
+      ...outlookProjection,
+      liquidGrowthRate: Number(outlookLiquidRate),
+      investmentGrowthRate: Number(outlookInvestmentRate),
+    });
+    setShowOutlookSettings(false);
   };
 
   const flowTypeColors: Record<FlowType, { bg: string; text: string; label: string }> = {
@@ -348,6 +564,16 @@ export default function BudgetView({
     cash: "💵"
   };
 
+  // Get categories not yet added to current month
+  const availableCategories = categories.filter(
+    cat => !monthlyBudgetCategories.some(mc => mc.monthKey === currentMonthKey && mc.categoryId === cat.id)
+  );
+
+  // Get transaction items for selected transaction
+  const selectedTransactionItems = showTransactionDetail 
+    ? transactionItems.filter(ti => ti.transactionId === showTransactionDetail.id)
+    : [];
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header with Month Navigation */}
@@ -355,13 +581,21 @@ export default function BudgetView({
         <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Finance</p>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Budget</h1>
-          <button 
-            onClick={() => setShowProjections(!showProjections)}
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "rgba(99,102,241,.15)" }}
-          >
-            <Calculator size={16} style={{ color: "#6366F1" }} />
-          </button>
+          <div className="flex items-center gap-2">
+            {lastUpdatedFormatted && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ backgroundColor: "rgba(99,102,241,.1)" }}>
+                <Clock size={10} style={{ color: "#6366F1" }} />
+                <span style={{ fontSize: 9, color: "#6366F1", fontWeight: 600 }}>{lastUpdatedFormatted}</span>
+              </div>
+            )}
+            <button 
+              onClick={() => setShowProjections(!showProjections)}
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: "rgba(99,102,241,.15)" }}
+            >
+              <Calculator size={16} style={{ color: "#6366F1" }} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -374,6 +608,9 @@ export default function BudgetView({
           <h2 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 16 }}>
             {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}
           </h2>
+          {lastUpdatedFormatted && (
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>Last Update: {lastUpdatedFormatted}</p>
+          )}
         </div>
         <button onClick={handleNextMonth} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,.06)" }}>
           <ChevronRight size={16} style={{ color: "#78716C" }} />
@@ -384,9 +621,18 @@ export default function BudgetView({
       {showProjections && (
         <div className="px-4 flex-shrink-0 mb-3">
           <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUpIcon size={16} style={{ color: "#6366F1" }} />
-              <p className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 13 }}>Wealth Projections</p>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUpIcon size={16} style={{ color: "#6366F1" }} />
+                <p className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 13 }}>Wealth Projections</p>
+              </div>
+              <button 
+                onClick={() => setShowOutlookSettings(true)}
+                className="w-6 h-6 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: "rgba(99,102,241,.15)" }}
+              >
+                <Settings size={12} style={{ color: "#6366F1" }} />
+              </button>
             </div>
             
             <div className="mb-3">
@@ -434,9 +680,11 @@ export default function BudgetView({
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-3" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+        
+        {/* ─── 4-PILLAR FINANCIAL MATRIX ─────────────────────────────────────── */}
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase" }}>This Month</p>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase" }}>Financial Matrix</p>
             <div className="flex items-center gap-1.5">
               {paceStatus.status === "on-track" && <CheckCircle size={14} style={{ color: paceStatus.color }} />}
               {paceStatus.status === "near" && <AlertTriangle size={14} style={{ color: paceStatus.color }} />}
@@ -444,35 +692,103 @@ export default function BudgetView({
               <span className="text-xs font-bold" style={{ color: paceStatus.color }}>{paceStatus.label}</span>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Income</p>
-              <p className="font-bold" style={{ color: "#059669", fontSize: 16 }}>${totalIncome.toFixed(2)}</p>
+          
+          {/* Previous Surplus Carryover */}
+          {pillarData.previousSurplus > 0 && (
+            <div className="mb-3 p-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowRight size={12} style={{ color: "#10B981" }} />
+                  <span className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 600 }}>Previous Surplus</span>
+                </div>
+                <span className="font-bold" style={{ color: "#10B981", fontSize: 12 }}>+${pillarData.previousSurplus.toFixed(2)}</span>
+              </div>
             </div>
-            <div>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Expenses</p>
-              <p className="font-bold" style={{ color: "#E11D48", fontSize: 16 }}>${totalExpenses.toFixed(2)}</p>
+          )}
+
+          {/* 4 Pillars */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Income Pillar */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(5,150,105,.08)" }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <TrendingUp size={12} style={{ color: "#059669" }} />
+                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Income</p>
+              </div>
+              <p className="font-bold" style={{ color: "#059669", fontSize: 16 }}>${pillarData.income.actual.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>of ${pillarData.income.expected.toFixed(2)} expected</p>
             </div>
-            <div>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginBottom: 2 }}>Balance</p>
-              <p className="font-bold" style={{ color: netBalance >= 0 ? "#2563EB" : "#EF4444", fontSize: 16 }}>${netBalance.toFixed(2)}</p>
+
+            {/* Spend Pillar */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(239,68,68,.08)" }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <TrendingDown size={12} style={{ color: "#EF4444" }} />
+                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Spend</p>
+              </div>
+              <p className="font-bold" style={{ color: "#EF4444", fontSize: 16 }}>${pillarData.spend.actual.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>of ${pillarData.spend.expected.toFixed(2)} budget</p>
+            </div>
+
+            {/* Save Pillar */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Shield size={12} style={{ color: "#10B981" }} />
+                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Save</p>
+              </div>
+              <p className="font-bold" style={{ color: "#10B981", fontSize: 16 }}>${pillarData.save.actual.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>Tax & Savings</p>
+            </div>
+
+            {/* Invest Pillar */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(99,102,241,.08)" }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target size={12} style={{ color: "#6366F1" }} />
+                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Invest</p>
+              </div>
+              <p className="font-bold" style={{ color: "#6366F1", fontSize: 16 }}>${pillarData.invest.actual.toFixed(2)}</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>Portfolios</p>
             </div>
           </div>
           
-          {/* Daily Rate Indicator */}
+          {/* Net Balance */}
           <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700">
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>Daily Spending Rate</span>
-              <span className="font-bold" style={{ fontSize: 12, color: "#6366F1" }}>${spendingAnalytics.current.toFixed(2)}/day</span>
-            </div>
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>Projected Month Total</span>
-              <span className="font-bold" style={{ fontSize: 12, color: spendingAnalytics.projected > spendingAnalytics.totalBudget ? "#EF4444" : "#059669" }}>
-                ${spendingAnalytics.projected.toFixed(2)}
-              </span>
+              <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700 }}>NET BALANCE</span>
+              <span className="font-bold" style={{ fontSize: 14, color: netBalance >= 0 ? "#059669" : "#EF4444" }}>${netBalance.toFixed(2)}</span>
             </div>
           </div>
         </div>
+
+        {/* Daily Rate Indicator */}
+        <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>Daily Spending Rate</span>
+            <span className="font-bold" style={{ fontSize: 12, color: "#6366F1" }}>${spendingAnalytics.current.toFixed(2)}/day</span>
+          </div>
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>Projected Month Total</span>
+            <span className="font-bold" style={{ fontSize: 12, color: spendingAnalytics.projected > spendingAnalytics.totalBudget ? "#EF4444" : "#059669" }}>
+              ${spendingAnalytics.projected.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Credit Card Utilization Alerts */}
+        {creditCardAlerts.filter(alert => alert.isOverThreshold).length > 0 && (
+          <div className="rounded-2xl p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-2 mb-2">
+              <CreditCard size={14} style={{ color: "#EAB308" }} />
+              <p className="font-bold" style={{ fontSize: 12, color: "#EAB308" }}>Credit Utilization Alert</p>
+            </div>
+            {creditCardAlerts.filter(alert => alert.isOverThreshold).map(alert => (
+              <div key={alert.account.id} className="flex items-center justify-between py-1">
+                <span className="text-slate-700 dark:text-slate-300" style={{ fontSize: 11 }}>{alert.account.name}</span>
+                <span className="font-bold" style={{ fontSize: 11, color: "#EAB308" }}>
+                  {alert.utilization.toFixed(1)}% used (target: {alert.threshold}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Accounts Summary */}
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
@@ -528,7 +844,7 @@ export default function BudgetView({
               <p className="font-bold" style={{ fontSize: 12, color: "#EF4444" }}>Over Budget</p>
             </div>
             {overspentCategories.slice(0, 3).map(cat => (
-              <div key={cat.id} className="flex items-center justify-between py-1">
+              <div key={cat.monthlyId} className="flex items-center justify-between py-1">
                 <span className="text-slate-700 dark:text-slate-300" style={{ fontSize: 11 }}>{cat.name}</span>
                 <span className="font-bold" style={{ fontSize: 11, color: "#EF4444" }}>${cat.over.toFixed(2)} over</span>
               </div>
@@ -544,32 +860,32 @@ export default function BudgetView({
               <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Categories</p>
             </div>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => setShowCategoryGroupSets(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
+              <button onClick={() => setShowCategorySets(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,.15)" }}>
                 <Wallet size={12} style={{ color: "#6366F1" }} />
               </button>
-              <button onClick={() => setShowAddCategory(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
-                <Plus size={12} style={{ color: "#2563EB" }} />
+              <button onClick={() => setShowManageCategories(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
+                <Settings size={12} style={{ color: "#2563EB" }} />
               </button>
             </div>
           </div>
           
-          {categories.length === 0 ? (
+          {currentMonthCategories.length === 0 ? (
             <div className="text-center py-6">
-              <Wallet size={32} style={{ color: "#475569", marginBottom: 8 }} />
-              <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>No categories yet</p>
-              <button onClick={() => setShowAddCategory(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}>
-                Add Category
+              <PieChart size={32} style={{ color: "#475569", marginBottom: 8 }} />
+              <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>No categories for this month</p>
+              <button onClick={() => setShowManageCategories(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}>
+                Add Categories to Month
               </button>
             </div>
           ) : (
             <div className="space-y-2">
-              {categories.map(cat => {
+              {currentMonthCategories.map(cat => {
                 const spent = getCategoryTotal(transactions, cat.id, currentMonthKey);
                 const percent = Math.min((spent / cat.monthlyCap) * 100, 100);
                 const isOver = spent > cat.monthlyCap;
                 
                 return (
-                  <div key={cat.id} className="rounded-xl p-3" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
+                  <div key={cat.monthlyId} className="rounded-xl p-3" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -579,8 +895,8 @@ export default function BudgetView({
                         <span className="text-xs font-bold" style={{ color: isOver ? "#EF4444" : "#475569" }}>
                           ${spent.toFixed(2)} / ${cat.monthlyCap.toFixed(2)}
                         </span>
-                        <button onClick={() => onDeleteCategory(cat.id)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
-                          <MoreHorizontal size={10} style={{ color: "#EF4444" }} />
+                        <button onClick={() => handleRemoveFromMonth(cat.monthlyId)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
+                          <X size={10} style={{ color: "#EF4444" }} />
                         </button>
                       </div>
                     </div>
@@ -619,7 +935,12 @@ export default function BudgetView({
               const flowStyle = flowTypeColors[t.flowType];
               
               return (
-                <div key={t.id} className="rounded-2xl p-3.5 flex items-center justify-between bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
+                <div 
+                  key={t.id} 
+                  onClick={() => setShowTransactionDetail(t)}
+                  className="rounded-2xl p-3.5 flex items-center justify-between bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50 cursor-pointer" 
+                  style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}
+                >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${category?.color || "#2563EB"}20` }}>
                       {isExpense ? (
@@ -663,7 +984,7 @@ export default function BudgetView({
                     <span className="font-bold flex-shrink-0" style={{ color: isExpense ? "#E11D48" : "#059669", fontSize: 14 }}>
                       {isExpense ? "-" : "+"}${t.amount.toFixed(2)}
                     </span>
-                    <button onClick={() => onDeleteTransaction(t.id)} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
+                    <button onClick={(e) => { e.stopPropagation(); onDeleteTransaction(t.id); }} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
                       <MoreHorizontal size={12} style={{ color: "#EF4444" }} />
                     </button>
                   </div>
@@ -675,6 +996,8 @@ export default function BudgetView({
       </div>
       </div>
 
+      {/* ─── MODALS ─────────────────────────────────────────────────────────── */}
+      
       {/* Add Category Modal */}
       {showAddCategory && (
         <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowAddCategory(false)}>
@@ -692,7 +1015,6 @@ export default function BudgetView({
                 ))}
               </div>
             </div>
-            <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" placeholder="Monthly cap ($)" value={newCategoryCap} onChange={e => setNewCategoryCap(e.target.value)} />
             <button onClick={handleAddCategory} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>Add Category</button>
           </div>
         </div>
@@ -749,8 +1071,8 @@ export default function BudgetView({
             <div>
               <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
               <div className="grid grid-cols-2 gap-2">
-                {categories.map(cat => (
-                  <button key={cat.id} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
+                {currentMonthCategories.map(cat => (
+                  <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
                     {cat.name}
                   </button>
                 ))}
@@ -762,9 +1084,195 @@ export default function BudgetView({
         </div>
       )}
 
+      {/* Transaction Detail Modal with Itemization */}
+      {showTransactionDetail && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => { setShowTransactionDetail(null); setNewTransactionItemDescription(""); setNewTransactionItemAmount(""); }}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-base">Transaction Details</h3>
+              <button onClick={() => { setShowTransactionDetail(null); setNewTransactionItemDescription(""); setNewTransactionItemAmount(""); }} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
+                <X size={14} className="text-white" />
+              </button>
+            </div>
+
+            {/* Transaction Info */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+              <p className="text-white font-semibold text-sm mb-1">{showTransactionDetail.description || "Transaction"}</p>
+              <p className="text-slate-400" style={{ fontSize: 11 }}>{showTransactionDetail.date} · ${showTransactionDetail.amount.toFixed(2)}</p>
+            </div>
+
+            {/* Receipt Items */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Receipt size={14} style={{ color: "#6366F1" }} />
+                <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Receipt Items</p>
+              </div>
+              
+              {selectedTransactionItems.length > 0 && (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {selectedTransactionItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+                      <div className="flex-1">
+                        <p className="text-white text-sm">{item.description}</p>
+                        <p className="text-slate-400" style={{ fontSize: 10 }}>{item.flowType}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold text-sm">${item.amount.toFixed(2)}</span>
+                        <button onClick={() => onDeleteTransactionItem(item.id)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.15)" }}>
+                          <X size={10} style={{ color: "#EF4444" }} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Item */}
+              <div className="pt-3 border-t border-white/10">
+                <p className="text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 600 }}>Add Item</p>
+                <input 
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-2" 
+                  placeholder="Item description" 
+                  value={newTransactionItemDescription}
+                  onChange={e => setNewTransactionItemDescription(e.target.value)}
+                />
+                <input 
+                  type="number"
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-2" 
+                  placeholder="Amount ($)" 
+                  value={newTransactionItemAmount}
+                  onChange={e => setNewTransactionItemAmount(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {(["spending", "saving", "investing", "income"] as FlowType[]).map(flow => (
+                    <button 
+                      key={flow} 
+                      onClick={() => setNewTransactionItemFlowType(flow)}
+                      className="py-2 rounded-xl text-xs font-bold capitalize"
+                      style={{ 
+                        backgroundColor: newTransactionItemFlowType === flow ? `${flowTypeColors[flow].bg}` : "rgba(255,255,255,.06)",
+                        color: newTransactionItemFlowType === flow ? flowTypeColors[flow].text : "#4E4E72"
+                      }}
+                    >
+                      {flow}
+                    </button>
+                  ))}
+                </div>
+                <button 
+                  onClick={handleAddTransactionItem}
+                  className="w-full py-3 rounded-2xl text-white font-bold text-sm"
+                  style={{ backgroundColor: "#6366F1" }}
+                  disabled={!newTransactionItemDescription || !newTransactionItemAmount}
+                >
+                  Add Item
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Categories Modal */}
+      {showManageCategories && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowManageCategories(false)}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
+            </div>
+            <h3 className="text-white font-bold text-base">Manage Categories - {MONTH_NAMES[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
+            
+            {/* Add new category to global library */}
+            <div className="space-y-2">
+              <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Create New Category</p>
+              <div className="flex gap-2">
+                <input 
+                  className="flex-1 rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  placeholder="Category name" 
+                  value={newCategoryName} 
+                  onChange={e => setNewCategoryName(e.target.value)} 
+                  autoFocus 
+                />
+                <button 
+                  onClick={handleAddCategory}
+                  className="px-4 py-2 rounded-xl text-white font-bold text-sm"
+                  style={{ backgroundColor: newCategoryName.trim() ? "#6366F1" : "rgba(99,102,241,.3)" }}
+                  disabled={!newCategoryName.trim()}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+
+            {/* Available categories to add */}
+            {availableCategories.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Add to Month</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {availableCategories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                        <span className="text-white text-sm font-semibold">{cat.name}</span>
+                      </div>
+                      <button 
+                        onClick={() => handleAddCategoryToMonth(cat.id, 0)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold"
+                        style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Currently assigned categories */}
+            {currentMonthCategories.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Currently Assigned</p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {currentMonthCategories.map(cat => (
+                    <div key={cat.monthlyId} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                        <div className="flex-1">
+                          <p className="text-white text-sm font-semibold">{cat.name}</p>
+                          <input 
+                            type="number" 
+                            className="mt-1 w-full rounded-lg px-2 py-1 text-stone-900 text-xs outline-none border border-stone-200 bg-white/80"
+                            placeholder="Budget ($)"
+                            value={cat.monthlyCap || ""}
+                            onChange={e => handleUpdateMonthlyCategory(cat.monthlyId, Number(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveFromMonth(cat.monthlyId)}
+                        className="w-6 h-6 rounded-full flex items-center justify-center ml-2"
+                        style={{ backgroundColor: "rgba(239,68,68,.15)" }}
+                      >
+                        <X size={12} style={{ color: "#EF4444" }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => setShowManageCategories(false)} className="w-full py-3.5 rounded-2xl font-bold text-sm" style={{ backgroundColor: "rgba(255,255,255,.07)", color: "#7878A4" }}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Category Group Sets Modal */}
       {showCategoryGroupSets && (
-        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowCategoryGroupSets(false)}>
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowCategorySets(false)}>
           <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
@@ -803,10 +1311,10 @@ export default function BudgetView({
               <button 
                 onClick={handleSaveCategoryGroupSet} 
                 className="w-full py-4 rounded-2xl text-white font-bold text-sm" 
-                style={{ backgroundColor: categories.length > 0 ? "#6366F1" : "rgba(99,102,241,.3)" }}
-                disabled={categories.length === 0}
+                style={{ backgroundColor: currentMonthCategories.length > 0 ? "#6366F1" : "rgba(99,102,241,.3)" }}
+                disabled={currentMonthCategories.length === 0}
               >
-                Save Template ({categories.length} categories)
+                Save Template ({currentMonthCategories.length} categories)
               </button>
             </div>
           </div>
@@ -856,9 +1364,54 @@ export default function BudgetView({
                   ))}
                 </div>
               </div>
-              <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-3" placeholder="Current balance ($)" value={newAccountBalance} onChange={e => setNewAccountBalance(e.target.value)} />
+              <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-2" placeholder="Current balance ($)" value={newAccountBalance} onChange={e => setNewAccountBalance(e.target.value)} />
+              {newAccountType === "credit" && (
+                <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-3" placeholder="Credit limit ($)" value={newAccountCreditLimit} onChange={e => setNewAccountCreditLimit(e.target.value)} />
+              )}
               <button onClick={handleAddAccount} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>Add Account</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Outlook Settings Modal */}
+      {showOutlookSettings && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowOutlookSettings(false)}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
+            </div>
+            <h3 className="text-white font-bold text-base">Outlook Settings</h3>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-stone-400 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>Liquid Growth Rate (%)</p>
+                <input 
+                  type="number"
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  value={outlookLiquidRate}
+                  onChange={e => setOutlookLiquidRate(e.target.value)}
+                  step="0.1"
+                />
+                <p className="text-stone-500 mt-1" style={{ fontSize: 10 }}>Annual return for checking, savings, cash</p>
+              </div>
+
+              <div>
+                <p className="text-stone-400 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>Investment Growth Rate (%)</p>
+                <input 
+                  type="number"
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  value={outlookInvestmentRate}
+                  onChange={e => setOutlookInvestmentRate(e.target.value)}
+                  step="0.1"
+                />
+                <p className="text-stone-500 mt-1" style={{ fontSize: 10 }}>Annual return for brokerage, retirement accounts</p>
+              </div>
+            </div>
+
+            <button onClick={handleSaveOutlookSettings} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>
+              Save Settings
+            </button>
           </div>
         </div>
       )}

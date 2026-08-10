@@ -9,7 +9,19 @@ import {
 import { AccountMenu } from "../components/AccountMenu";
 import ExecutiveCommandCenter from "../components/ExecutiveCommandCenter";
 import FitnessView from "../components/FitnessView";
-import BudgetView, { BudgetCategory, BudgetTransaction, Account, BudgetCategoryGroupSet, getMonthKey } from "../components/BudgetView";
+import BudgetView, { getMonthKey } from "../components/BudgetView";
+import type { 
+  Category, 
+  MonthlyBudgetCategory, 
+  BudgetTransaction, 
+  Account, 
+  CategoryGroupSet,
+  TransactionItem,
+  OutlookProjection,
+  BudgetMetadata,
+  SurplusCarryover,
+  BudgetCategory
+} from "../components/BudgetView";
 import type { PlannerDataPayload, NotificationSettings } from "../lib/plannerStorage";
 import {
   loadPlannerData,
@@ -56,24 +68,24 @@ export const DS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 export const DF = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 export const MF = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 export const TL_START = 0 * 60, TL_END = 24 * 60, TL_H = TL_END - TL_START;
-export const PCOLORS = ["#818CF8","#38BDF8","#C084FC","#F43F5E","#FB923C","#F472B6","#EF4444","#FBBF24","#10B981","#06B6D4","#8B5CF6","#F43F5E"];
+export const PCOLORS = ["#2D5A27","#4ADE80","#D97706","#059669","#78716C","#A8B5AF","#DC2626","#FBBF24","#10B981","#6EE7B7","#52605B","#1C2421"];
 export const DEFAULT_GROUPS: Group[] = [
-  { id:"g1", name:"School",   color:"#818CF8" },
-  { id:"g2", name:"Work",     color:"#38BDF8" },
-  { id:"g3", name:"Personal", color:"#C084FC" },
-  { id:"g4", name:"Fitness",  color:"#F43F5E" },
-  { id:"g5", name:"Food",     color:"#FB923C" },
-  { id:"g6", name:"Wellness", color:"#F472B6" },
+  { id:"g1", name:"School",   color:"#2D5A27" },
+  { id:"g2", name:"Work",     color:"#4ADE80" },
+  { id:"g3", name:"Personal", color:"#D97706" },
+  { id:"g4", name:"Fitness",  color:"#059669" },
+  { id:"g5", name:"Food",     color:"#78716C" },
+  { id:"g6", name:"Wellness", color:"#A8B5AF" },
 ];
 
 // ─── Entity Palette ─────────────────────────────────────────────────────────────
 export const ENTITY_COLORS = {
-  event:   "#2563EB", // Cobalt Blue
-  task:    "#0284C7", // Sky Blue / Sapphire
-  goal:    "#7C3AED", // Violet
-  workout: "#E11D48", // Crimson
-  meal:    "#D97706", // Amber
-  budget:  "#059669", // Emerald
+  event:   "#2D5A27", // Deep Forest Green
+  task:    "#78716C", // Stone / Natural Slate
+  goal:    "#78716C", // Stone / Natural Slate
+  workout: "#D97706", // Amber / Warm Oak
+  meal:    "#D97706", // Amber / Warm Oak
+  budget:  "#059669", // Emerald / Forest
 } as const;
 export type EntityType = keyof typeof ENTITY_COLORS;
 
@@ -190,11 +202,11 @@ function computeLayout(items: TLItem[]): LayItem[] {
 }
 
 // ─── Shared Small Components ──────────────────────────────────────────────────
-export const inputCls = "w-full rounded-xl px-4 py-3 text-slate-900 dark:text-slate-50 text-sm outline-none border border-slate-200 dark:border-stone-700 bg-white/80 dark:bg-stone-900/60 backdrop-blur-md transition-all duration-200 focus:border-slate-300 dark:focus:border-stone-500 focus:bg-white dark:focus:bg-stone-900/80";
-export const inputSty = { caretColor: "#2563EB" } as React.CSSProperties;
-export const labelSty = { color: "#475569", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
+export const inputCls = "w-full rounded-xl px-4 py-3 text-[#1C2421] dark:text-[#F0F4F2] text-sm outline-none border border-[#D1D8D5] dark:border-[rgba(74,222,128,0.2)] bg-white dark:bg-[#121A17] backdrop-blur-md transition-all duration-200 focus:border-[#2D5A27] dark:focus:border-[#4ADE80] focus:bg-white dark:focus:bg-[#121A17]";
+export const inputSty = { caretColor: "#2D5A27" } as React.CSSProperties;
+export const labelSty = { color: "#52605B", fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" as const, fontFamily: "'Inter', monospace" };
 export const cardSty  = { backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" } as React.CSSProperties;
-export const cardCls  = "bg-white/85 dark:bg-stone-900/60 border border-slate-200/50 dark:border-stone-800/50";
+export const cardCls  = "bg-white/85 dark:bg-[#17211D]/60 border border-[rgba(28,36,33,0.08)] dark:border-[rgba(74,222,128,0.15)]";
 
 function DaySelector({ selected, onChange }: { selected: number[]; onChange: (d: number[]) => void }) {
   const toggle = (i: number) => onChange(selected.includes(i) ? selected.filter(x => x !== i) : [...selected, i]);
@@ -1911,10 +1923,10 @@ function BottomNav({ screen, onChange, onAccountClick, onAddClick, username }: {
 
   return (
     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-auto max-w-md px-4">
-      <div className="relative flex items-center justify-between gap-4 px-4 py-2.5 rounded-full bg-slate-900/85 backdrop-blur-xl border border-slate-800/80 shadow-2xl">
+      <div className="relative flex items-center justify-between gap-4 px-4 py-2.5 rounded-full bg-[#17211D]/90 backdrop-blur-xl border border-[rgba(74,222,128,0.2)] shadow-2xl">
         {/* Left: Account */}
         <button key="account" onClick={() => { setPageMenuOpen(false); onAccountClick(); }}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-600/30 text-indigo-200 border border-indigo-500/40 transition-all duration-200 hover:bg-indigo-600/40"
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#2D5A27]/40 text-[#4ADE80] border border-[#4ADE80]/40 transition-all duration-200 hover:bg-[#2D5A27]/50"
           style={{ fontSize: 11, fontWeight: 700 }}>
           {initials}
         </button>
@@ -1922,21 +1934,21 @@ function BottomNav({ screen, onChange, onAccountClick, onAddClick, username }: {
         {/* Middle: Current page + dropdown */}
         <div className="relative" ref={menuRef}>
           <button onClick={() => setPageMenuOpen(!pageMenuOpen)}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-slate-800/80 hover:bg-slate-700/80 text-slate-100 backdrop-blur-md transition-all duration-200">
-            <current.icon size={16} className="text-indigo-300" />
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#1E2A25]/80 hover:bg-[#2A3A33]/80 text-[#F0F4F2] backdrop-blur-md transition-all duration-200">
+            <current.icon size={16} className="text-[#4ADE80]" />
             <span style={{ fontSize: 12, fontWeight: 700 }}>{current.label}</span>
-            <ChevronDown size={12} className="text-slate-400" />
+            <ChevronDown size={12} className="text-[#6E8C7D]" />
           </button>
           {pageMenuOpen && (
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 flex flex-col gap-1 p-2 rounded-2xl bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 shadow-lg dark:shadow-black/20">
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 flex flex-col gap-1 p-2 rounded-2xl bg-white/95 dark:bg-[#17211D]/95 backdrop-blur-md border border-[rgba(28,36,33,0.08)] dark:border-[rgba(74,222,128,0.15)] shadow-lg dark:shadow-black/20">
               {items.map(item => {
                 const active = screen === item.id;
                 return (
                   <button key={item.id} onClick={() => { onChange(item.id); setPageMenuOpen(false); }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-left transition-all duration-200"
-                    style={{ backgroundColor: active ? "rgba(99,102,241,.15)" : "transparent" }}>
-                    <item.icon size={16} style={{ color: active ? "#6366F1" : "#78716C" }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: active ? "#6366F1" : "#78716C" }}>{item.label}</span>
+                    style={{ backgroundColor: active ? "rgba(45,90,39,.15)" : "transparent" }}>
+                    <item.icon size={16} style={{ color: active ? "#2D5A27" : "#78716C" }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: active ? "#2D5A27" : "#78716C" }}>{item.label}</span>
                   </button>
                 );
               })}
@@ -1946,7 +1958,7 @@ function BottomNav({ screen, onChange, onAccountClick, onAddClick, username }: {
 
         {/* Right: + */}
         <button key="add" onClick={() => { setPageMenuOpen(false); onAddClick(); }}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:bg-indigo-500">
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#2D5A27] text-white shadow-lg shadow-[#2D5A27]/30 transition-all duration-200 hover:bg-[#3A7033]">
           <Plus size={18} />
         </button>
       </div>
@@ -2008,10 +2020,23 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const [goalLogs,    setGoalLogs]    = useState<GoalLog[]>([]);
   const [groups,      setGroups]      = useState<Group[]>(DEFAULT_GROUPS);
   const [activeWorkout, setActiveWorkout] = useState<ActiveWO | null>(null);
+  
+  // New two-tier category system
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [monthlyBudgetCategories, setMonthlyBudgetCategories] = useState<MonthlyBudgetCategory[]>([]);
+  
+  // Legacy state for backward compatibility
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
   const [budgetTransactions, setBudgetTransactions] = useState<BudgetTransaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categoryGroupSets, setCategoryGroupSets] = useState<BudgetCategoryGroupSet[]>([]);
+  const [categoryGroupSets, setCategoryGroupSets] = useState<CategoryGroupSet[]>([]);
+  
+  // New budget entities
+  const [transactionItems, setTransactionItems] = useState<TransactionItem[]>([]);
+  const [outlookProjection, setOutlookProjection] = useState<OutlookProjection | null>(null);
+  const [budgetMetadata, setBudgetMetadata] = useState<BudgetMetadata | null>(null);
+  const [surplusCarryovers, setSurplusCarryovers] = useState<SurplusCarryover[]>([]);
+  
   const [loaded, setLoaded] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
 
@@ -2077,6 +2102,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     const payload: PlannerDataPayload = {
       calEvents, calTasks, calMeals, calWorkouts, calGoals, goalLogs, groups, activeWorkout,
       budgetCategories, budgetTransactions, accounts,
+      categories, monthlyBudgetCategories, transactionItems, categoryGroupSets,
+      outlookProjection, budgetMetadata, surplusCarryovers,
     };
     writeLocalPlannerBackup(userId, payload);
 
@@ -2166,16 +2193,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setScreen("goals");
   };
 
-  const handleAddBudgetCategory = (category: BudgetCategory) => {
-    setBudgetCategories(p => [...p, category]);
-  };
-
   const handleAddBudgetTransaction = (transaction: BudgetTransaction) => {
     setBudgetTransactions(p => [...p, transaction]);
-  };
-
-  const handleDeleteBudgetCategory = (id: string) => {
-    setBudgetCategories(p => p.filter(c => c.id !== id));
   };
 
   const handleDeleteBudgetTransaction = (id: string) => {
@@ -2190,7 +2209,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
     setAccounts(p => p.filter(a => a.id !== id));
   };
 
-  const handleSaveCategoryGroupSet = (set: BudgetCategoryGroupSet) => {
+  const handleSaveCategoryGroupSet = (set: CategoryGroupSet) => {
     setCategoryGroupSets(p => [...p, set]);
   };
 
@@ -2203,6 +2222,7 @@ export default function App({ userId, username, onSignOut }: AppProps) {
       ...cat,
       id: Date.now().toString() + Math.random().toString(36).slice(2, 9),
       monthKey: currentMonthKey,
+      type: "expense" as const,
     }));
     
     setBudgetCategories(p => [...p, ...newCategories]);
@@ -2211,8 +2231,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const sharedProps = { selectedDate, setSelectedDate, calEvents, calTasks, calWorkouts, calGoals, groups };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F4F7FA] dark:bg-[#0B0F19]" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <div className="relative w-full max-w-sm overflow-hidden bg-[#F4F7FA] dark:bg-[#0B0F19]"
+    <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5] dark:bg-[#0E1412] text-[#1C2421] dark:text-[#F0F4F2]" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="relative w-full max-w-sm overflow-hidden bg-[#FAF8F5] dark:bg-[#0E1412] text-[#1C2421] dark:text-[#F0F4F2]"
         style={{ height: "100dvh", maxHeight: 900, boxShadow: "0 0 60px rgba(0,0,0,.08)" }}>
 
         <div className="absolute inset-0 overflow-hidden">
@@ -2232,7 +2252,35 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             />
           )}
           {screen === "goals"   && <GoalsView calGoals={calGoals} groups={groups} onModal={openModal} goalLogs={goalLogs} toggleGoalLog={toggleGoalLog} onDetail={openDetail} />}
-          {screen === "budget"  && <BudgetView categories={budgetCategories} transactions={budgetTransactions} accounts={accounts} categoryGroupSets={categoryGroupSets} onAddCategory={handleAddBudgetCategory} onAddTransaction={handleAddBudgetTransaction} onDeleteCategory={handleDeleteBudgetCategory} onDeleteTransaction={handleDeleteBudgetTransaction} onAddAccount={handleAddAccount} onDeleteAccount={handleDeleteAccount} onSaveCategoryGroupSet={handleSaveCategoryGroupSet} onApplyCategoryGroupSet={handleApplyCategoryGroupSet} />}
+          {screen === "budget"  && <BudgetView 
+            categories={categories} 
+            monthlyBudgetCategories={monthlyBudgetCategories}
+            transactions={budgetTransactions} 
+            accounts={accounts} 
+            categoryGroupSets={categoryGroupSets}
+            transactionItems={transactionItems}
+            outlookProjection={outlookProjection}
+            budgetMetadata={budgetMetadata}
+            surplusCarryovers={surplusCarryovers}
+            onAddCategory={(cat) => setCategories(p => [...p, cat])} 
+            onAddMonthlyCategory={(mc) => setMonthlyBudgetCategories(p => [...p, mc])}
+            onUpdateMonthlyCategory={(mc) => setMonthlyBudgetCategories(p => p.map(m => m.id === mc.id ? mc : m))}
+            onRemoveMonthlyCategory={(id) => setMonthlyBudgetCategories(p => p.filter(m => m.id !== id))}
+            onDeleteCategory={(id) => setCategories(p => p.filter(c => c.id !== id))}
+            onAddTransaction={handleAddBudgetTransaction} 
+            onDeleteTransaction={handleDeleteBudgetTransaction}
+            onAddTransactionItem={(item) => setTransactionItems(p => [...p, item])}
+            onDeleteTransactionItem={(id) => setTransactionItems(p => p.filter(ti => ti.id !== id))}
+            onAddAccount={handleAddAccount} 
+            onDeleteAccount={handleDeleteAccount}
+            onUpdateAccount={(account) => setAccounts(p => p.map(a => a.id === account.id ? account : a))}
+            onSaveCategoryGroupSet={handleSaveCategoryGroupSet} 
+            onApplyCategoryGroupSet={handleApplyCategoryGroupSet}
+            onUpdateOutlookProjection={(proj) => setOutlookProjection(proj)}
+            onUpdateBudgetMetadata={(meta) => setBudgetMetadata(meta)}
+            onCreateSurplusCarryover={(carryover) => setSurplusCarryovers(p => [...p, carryover])}
+            onMarkSurplusApplied={(id) => setSurplusCarryovers(p => p.map(sc => sc.id === id ? { ...sc, applied: true } : sc))}
+          />}
         </div>
 
         <BottomNav screen={screen} onChange={setScreen} onAccountClick={() => setAccountOpen(true)} onAddClick={() => setAddOpen(true)} username={username} />
