@@ -19,6 +19,10 @@ export interface PushNotificationState {
   subscription: PushSubscriptionData | null;
 }
 
+// Cached service worker registration so subscribe() can run synchronously
+// within a user gesture handler without awaiting navigator.serviceWorker.ready
+let cachedRegistration: ServiceWorkerRegistration | null = null;
+
 /**
  * Check if push notifications are supported
  */
@@ -40,7 +44,34 @@ export function getNotificationPermission(): NotificationPermission | "unsupport
 }
 
 /**
- * Request notification permission from the user
+ * Get the VAPID public key from environment variables
+ */
+export function getVapidPublicKey(): string {
+  return import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+}
+
+/**
+ * Register the service worker for push notifications.
+ * Should be called once when the app loads so the registration is cached
+ * and available synchronously during user gesture handlers.
+ */
+export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!isPushSupported()) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.register("/sw.js");
+    cachedRegistration = registration;
+    console.log("✅ Service worker registered:", registration.scope);
+    return registration;
+  } catch (error) {
+    console.error("❌ Service worker registration failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Request notification permission from the user.
+ * IMPORTANT: Must be called synchronously within a user gesture handler (iOS requirement).
  */
 export async function requestNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
   if (!isPushSupported()) {
@@ -57,40 +88,35 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 }
 
 /**
- * Register service worker and get push subscription
+ * Subscribe to push notifications.
+ * IMPORTANT: Must be called within a user gesture handler before any async backend queries.
+ * Uses the cached service worker registration when available so subscribe() runs
+ * synchronously in the gesture context on iOS.
  */
-export async function getPushSubscription(): Promise<PushSubscriptionData> {
+export async function subscribeToPush(): Promise<PushSubscriptionData> {
   if (!isPushSupported()) {
     throw new Error("Push notifications not supported in this browser");
   }
 
-  try {
-    // Wait for service worker to be ready
-    console.log("📱 Waiting for service worker to be ready...");
-    const registration = await navigator.serviceWorker.ready;
-    console.log("✅ Service worker ready:", registration.scope);
+  const vapidPublicKey = getVapidPublicKey();
+  if (!vapidPublicKey) {
+    throw new Error("Configuration Error: VAPID Public Key missing");
+  }
 
-    // Get existing subscription or create new one
+  try {
+    // Use cached registration if available, otherwise wait for ready
+    const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
+
+    // Check for existing subscription first
     let subscription = await registration.pushManager.getSubscription();
-    console.log("🔍 Existing subscription:", subscription ? "Found" : "None");
 
     if (!subscription) {
-      // Create a new subscription
-      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-      
-      if (!vapidPublicKey) {
-        const error = "Missing VAPID Key: VITE_VAPID_PUBLIC_KEY environment variable is not configured. Please add it to your .env file.";
-        console.error("❌", error);
-        throw new Error(error);
-      }
-
-      console.log("🔑 Creating new push subscription with VAPID key...");
+      // Create new subscription with VAPID key
       const vapidKeyArray = urlBase64ToUint8Array(vapidPublicKey);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidKeyArray.buffer as ArrayBuffer,
       });
-      console.log("✅ Push subscription created successfully");
     }
 
     // Extract subscription data
@@ -114,8 +140,47 @@ export async function getPushSubscription(): Promise<PushSubscriptionData> {
       },
     };
   } catch (error) {
-    console.error("❌ Error getting push subscription:", error);
+    console.error("❌ Error subscribing to push:", error);
     throw error;
+  }
+}
+
+/**
+ * Get existing push subscription (without creating a new one)
+ */
+export async function getPushSubscription(): Promise<PushSubscriptionData | null> {
+  if (!isPushSupported()) {
+    return null;
+  }
+
+  try {
+    const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) return null;
+
+    const subscriptionData = subscription.toJSON() as {
+      endpoint: string;
+      keys: {
+        p256dh: string;
+        auth: string;
+      };
+    };
+
+    if (!subscriptionData.endpoint || !subscriptionData.keys) {
+      return null;
+    }
+
+    return {
+      endpoint: subscriptionData.endpoint,
+      keys: {
+        p256dh: subscriptionData.keys.p256dh,
+        auth: subscriptionData.keys.auth,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error getting push subscription:", error);
+    return null;
   }
 }
 
@@ -162,7 +227,7 @@ export async function removePushSubscription(userId: string): Promise<void> {
 
   // First, get the subscription to unsubscribe from it
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
     const subscription = await registration.pushManager.getSubscription();
     
     if (subscription) {
@@ -243,7 +308,7 @@ export async function sendTestNotification(): Promise<void> {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
     
     // Show a local notification for testing
     await registration.showNotification("One Stop Planner", {
@@ -261,7 +326,7 @@ export async function sendTestNotification(): Promise<void> {
 /**
  * Convert VAPID key from base64 to Uint8Array
  */
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+export function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding)
     .replace(/-/g, "+")

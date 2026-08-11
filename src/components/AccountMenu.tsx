@@ -3,11 +3,12 @@ import { useState, useEffect } from "react";
 import {
   isPushSupported,
   getNotificationPermission,
-  getPushSubscription,
+  subscribeToPush,
   savePushSubscription,
   removePushSubscription,
   loadPushSubscription,
   sendTestNotification,
+  getVapidPublicKey,
   type PushNotificationState,
 } from "../lib/pushNotifications";
 
@@ -82,6 +83,7 @@ export function AccountMenu({
   });
   const [pushLoading, setPushLoading] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [pushToast, setPushToast] = useState<string | null>(null);
   const [testNotificationSent, setTestNotificationSent] = useState(false);
 
   useEffect(() => {
@@ -133,6 +135,7 @@ export function AccountMenu({
 
     setPushLoading(true);
     setPushError(null);
+    setPushToast(null);
     setTestNotificationSent(false);
 
     try {
@@ -148,19 +151,30 @@ export function AccountMenu({
         return;
       }
 
-      // iOS Safari requirement: Request permission IMMEDIATELY in response to user gesture
-      // This must happen before any async database operations
+      // ── iOS Safari requirement: Request permission and subscribe SYNCHRONOUSLY ──
+      // This must happen inside the click handler before any async backend queries.
+      // Notification.requestPermission() and pushManager.subscribe() must execute
+      // in the same synchronous gesture context on iOS.
+
+      // Check VAPID key first — if missing, show explicit error toast
+      if (!getVapidPublicKey()) {
+        setPushError("Configuration Error: VAPID Public Key missing");
+        setPushLoading(false);
+        return;
+      }
+
+      // Request permission synchronously in the gesture handler
       let permission = Notification.permission;
       if (permission === "default") {
         permission = await Notification.requestPermission();
       }
 
       if (permission === "granted") {
-        // Permission granted - now proceed with async operations
-        // Get push subscription (this will create one if it doesn't exist)
-        const subscription = await getPushSubscription();
+        // Permission granted — immediately attempt pushManager.subscribe()
+        // This runs synchronously in the gesture context before any DB queries.
+        const subscription = await subscribeToPush();
 
-        // Save to Supabase
+        // Save to Supabase (async backend query happens AFTER subscription)
         await savePushSubscription(userId, subscription);
         
         setPushState({
@@ -168,6 +182,8 @@ export function AccountMenu({
           permission: "granted",
           subscription,
         });
+        setPushToast("Notifications enabled & subscribed!");
+        setTimeout(() => setPushToast(null), 3000);
       } else if (permission === "denied") {
         // Permission denied - likely iOS blocking
         setPushError(
@@ -296,6 +312,15 @@ export function AccountMenu({
               <div className="rounded-xl p-3 mb-2 dark:bg-red-500/10 bg-red-500/10 border dark:border-red-500/30 border-red-500/30">
                 <p className="text-xs dark:text-red-400 text-red-700 leading-relaxed">
                   {pushError}
+                </p>
+              </div>
+            )}
+
+            {/* Success Toast */}
+            {pushToast && (
+              <div className="rounded-xl p-3 mb-2 dark:bg-emerald-500/10 bg-emerald-500/10 border dark:border-emerald-500/30 border-emerald-500/30">
+                <p className="text-xs dark:text-emerald-400 text-emerald-700 leading-relaxed">
+                  {pushToast}
                 </p>
               </div>
             )}
