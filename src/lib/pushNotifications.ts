@@ -239,20 +239,65 @@ export async function savePushSubscription(
     return;
   }
 
-  const { error } = await supabase.from(PUSH_TABLE).upsert(
-    {
-      user_id: userId,
-      endpoint: subscription.endpoint,
-      keys: subscription.keys,
-      enabled: true,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
+  const endpoint = subscription.endpoint;
+  const p256dh = subscription.keys?.p256dh;
+  const auth = subscription.keys?.auth;
 
+  if (!endpoint) {
+    throw new Error("Invalid push subscription: Missing endpoint URL.");
+  }
+
+  // Try explicit upsert matching the endpoint column
+  const { error } = await supabase
+    .from(PUSH_TABLE)
+    .upsert({
+      user_id: userId,
+      endpoint: endpoint,
+      p256dh: p256dh,
+      auth: auth,
+      enabled: true,
+      keys: subscription.keys,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'endpoint' });
+
+  // Fallback: If PostgREST upsert fails on conflict constraint match, do a manual SELECT -> UPDATE / INSERT
   if (error) {
-    console.error("Error saving push subscription:", error);
-    throw new Error(`savePushSubscription failed: ${formatErrorDetail(error)}`);
+    console.warn("Upsert failed, falling back to query-check logic:", error.message);
+    
+    const { data: existing } = await supabase
+      .from(PUSH_TABLE)
+      .select('id')
+      .eq('endpoint', endpoint)
+      .maybeSingle();
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from(PUSH_TABLE)
+        .update({
+          user_id: userId,
+          p256dh: p256dh,
+          auth: auth,
+          enabled: true,
+          keys: subscription.keys,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+
+      if (updateError) throw new Error("savePushSubscription update failed: " + updateError.message);
+    } else {
+      const { error: insertError } = await supabase
+        .from(PUSH_TABLE)
+        .insert({
+          user_id: userId,
+          endpoint: endpoint,
+          p256dh: p256dh,
+          auth: auth,
+          enabled: true,
+          keys: subscription.keys
+        });
+
+      if (insertError) throw new Error("savePushSubscription insert failed: " + insertError.message);
+    }
   }
 }
 
