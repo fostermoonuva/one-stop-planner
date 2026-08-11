@@ -107,16 +107,25 @@ export async function subscribeToPush(): Promise<PushSubscriptionData> {
     // Use cached registration if available, otherwise wait for ready
     const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
 
-    // Check for existing subscription first
-    let subscription = await registration.pushManager.getSubscription();
+    // IMPORTANT: Call pushManager.subscribe() IMMEDIATELY within the user gesture.
+    // Do NOT await getSubscription() first — that async gap breaks the synchronous
+    // gesture context on iOS and causes "Failed to enable push notifications".
+    const vapidKeyArray = urlBase64ToUint8Array(vapidPublicKey);
 
-    if (!subscription) {
-      // Create new subscription with VAPID key
-      const vapidKeyArray = urlBase64ToUint8Array(vapidPublicKey);
+    let subscription: PushSubscription;
+    try {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidKeyArray.buffer as ArrayBuffer,
       });
+    } catch (subscribeError) {
+      // Fallback: if subscribe() fails because a subscription already exists,
+      // retrieve the existing one instead of throwing.
+      const existing = await registration.pushManager.getSubscription();
+      if (!existing) {
+        throw subscribeError;
+      }
+      subscription = existing;
     }
 
     // Extract subscription data
