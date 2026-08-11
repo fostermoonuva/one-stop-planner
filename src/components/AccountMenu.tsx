@@ -198,10 +198,17 @@ export function AccountMenu({
         // Default (not prompted)
         setPushError("Notification permission was not granted");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling push notifications:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to enable push notifications. Please try again.";
-      setPushError(errorMessage);
+      let message = "Failed to enable push notifications.";
+      if (typeof error === "string") {
+        message = error;
+      } else if (error?.message) {
+        message = error.message;
+      } else if (typeof error === "object") {
+        message = JSON.stringify(error);
+      }
+      setPushError(`Push Error: ${message}`);
     } finally {
       setPushLoading(false);
     }

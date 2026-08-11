@@ -24,6 +24,23 @@ export interface PushNotificationState {
 let cachedRegistration: ServiceWorkerRegistration | null = null;
 
 /**
+ * Build a diagnostic string from any thrown value so callers can surface
+ * the exact exception details in error toasts.
+ */
+export function formatErrorDetail(error: any): string {
+  if (typeof error === "string") return error;
+  if (error?.message) return error.message;
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return String(error);
+}
+
+/**
  * Check if push notifications are supported
  */
 export function isPushSupported(): boolean {
@@ -81,9 +98,11 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   try {
     const permission = await Notification.requestPermission();
     return permission;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error requesting notification permission:", error);
-    return "denied";
+    throw new Error(
+      `requestNotificationPermission failed: ${formatErrorDetail(error)}`
+    );
   }
 }
 
@@ -118,12 +137,25 @@ export async function subscribeToPush(): Promise<PushSubscriptionData> {
         userVisibleOnly: true,
         applicationServerKey: vapidKeyArray.buffer as ArrayBuffer,
       });
-    } catch (subscribeError) {
+    } catch (subscribeError: any) {
       // Fallback: if subscribe() fails because a subscription already exists,
       // retrieve the existing one instead of throwing.
-      const existing = await registration.pushManager.getSubscription();
+      let existing: PushSubscription | null = null;
+      try {
+        existing = await registration.pushManager.getSubscription();
+      } catch (getSubscriptionError: any) {
+        throw new Error(
+          `pushManager.subscribe() failed: ${formatErrorDetail(
+            subscribeError
+          )}; getSubscription() also failed: ${formatErrorDetail(
+            getSubscriptionError
+          )}`
+        );
+      }
       if (!existing) {
-        throw subscribeError;
+        throw new Error(
+          `pushManager.subscribe() failed: ${formatErrorDetail(subscribeError)}`
+        );
       }
       subscription = existing;
     }
@@ -148,9 +180,9 @@ export async function subscribeToPush(): Promise<PushSubscriptionData> {
         auth: subscriptionData.keys.auth,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error subscribing to push:", error);
-    throw error;
+    throw new Error(`subscribeToPush failed: ${formatErrorDetail(error)}`);
   }
 }
 
@@ -220,7 +252,7 @@ export async function savePushSubscription(
 
   if (error) {
     console.error("Error saving push subscription:", error);
-    throw error;
+    throw new Error(`savePushSubscription failed: ${formatErrorDetail(error)}`);
   }
 }
 
@@ -235,6 +267,7 @@ export async function removePushSubscription(userId: string): Promise<void> {
   }
 
   // First, get the subscription to unsubscribe from it
+  let unsubscribeError: unknown = null;
   try {
     const registration = cachedRegistration ?? (await navigator.serviceWorker.ready);
     const subscription = await registration.pushManager.getSubscription();
@@ -243,6 +276,7 @@ export async function removePushSubscription(userId: string): Promise<void> {
       await subscription.unsubscribe();
     }
   } catch (error) {
+    unsubscribeError = error;
     console.error("Error unsubscribing from push:", error);
   }
 
@@ -254,7 +288,14 @@ export async function removePushSubscription(userId: string): Promise<void> {
 
   if (error) {
     console.error("Error removing push subscription:", error);
-    throw error;
+    throw new Error(`removePushSubscription failed: ${formatErrorDetail(error)}`);
+  }
+
+  // Surface any unsubscribe error AFTER the DB cleanup has been attempted
+  if (unsubscribeError) {
+    throw new Error(
+      `removePushSubscription unsubscribe failed: ${formatErrorDetail(unsubscribeError)}`
+    );
   }
 }
 
@@ -326,9 +367,9 @@ export async function sendTestNotification(): Promise<void> {
       badge: "/vite.svg",
       tag: "test-notification",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error sending test notification:", error);
-    throw error;
+    throw new Error(`sendTestNotification failed: ${formatErrorDetail(error)}`);
   }
 }
 
