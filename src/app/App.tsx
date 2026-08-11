@@ -2196,6 +2196,9 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const updateTask    = (t: CalTask)    => setCalTasks(p => p.map(x => x.id === t.id ? t : x));
   const updateGoal    = (g: CalGoal)    => setCalGoals(p => p.map(x => x.id === g.id ? g : x));
   const updateMeal    = (m: CalMeal)    => setCalMeals(p => p.map(x => x.id === m.id ? m : x));
+  
+  const updateTransaction = (t: BudgetTransaction) => setBudgetTransactions(p => p.map(x => x.id === t.id ? t : x));
+  const updateAccounts = (accounts: Account[]) => setAccounts(accounts);
 
   const deleteEvent   = (id: string) => setCalEvents(p => p.filter(x => x.id !== id));
   const deleteTask    = (id: string) => setCalTasks(p => p.filter(x => x.id !== id));
@@ -2224,6 +2227,8 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   };
 
   const handleDeleteBudgetTransaction = (id: string) => {
+    // Note: Account balance reversal is handled by BudgetView's handleDeleteTransactionWithReversal
+    // to avoid double-reversal. This function only removes the transaction from state.
     setBudgetTransactions(p => p.filter(t => t.id !== id));
   };
 
@@ -2285,7 +2290,6 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             accounts={accounts} 
             categoryGroupSets={categoryGroupSets}
             transactionItems={transactionItems}
-            outlookProjection={outlookProjection}
             budgetMetadata={budgetMetadata}
             surplusCarryovers={surplusCarryovers}
             onAddCategory={(cat) => setCategories(p => [...p, cat])} 
@@ -2294,15 +2298,15 @@ export default function App({ userId, username, onSignOut }: AppProps) {
             onRemoveMonthlyCategory={(id) => setMonthlyBudgetCategories(p => p.filter(m => m.id !== id))}
             onDeleteCategory={(id) => setCategories(p => p.filter(c => c.id !== id))}
             onAddTransaction={handleAddBudgetTransaction} 
+            onUpdateTransaction={updateTransaction}
             onDeleteTransaction={handleDeleteBudgetTransaction}
             onAddTransactionItem={(item) => setTransactionItems(p => [...p, item])}
-            onDeleteTransactionItem={(id) => setTransactionItems(p => p.filter(ti => ti.id !== id))}
-            onAddAccount={handleAddAccount} 
+            onAddAccount={handleAddAccount}
             onDeleteAccount={handleDeleteAccount}
             onUpdateAccount={(account) => setAccounts(p => p.map(a => a.id === account.id ? account : a))}
+            onUpdateAccounts={updateAccounts}
             onSaveCategoryGroupSet={handleSaveCategoryGroupSet} 
             onApplyCategoryGroupSet={handleApplyCategoryGroupSet}
-            onUpdateOutlookProjection={(proj) => setOutlookProjection(proj)}
             onUpdateBudgetMetadata={(meta) => setBudgetMetadata(meta)}
             onCreateSurplusCarryover={(carryover) => setSurplusCarryovers(p => [...p, carryover])}
             onMarkSurplusApplied={(id) => setSurplusCarryovers(p => p.map(sc => sc.id === id ? { ...sc, applied: true } : sc))}

@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { 
-  Wallet, Plus, TrendingUp, TrendingDown, MoreHorizontal, PieChart, 
+  Wallet, Plus, TrendingUp, TrendingDown, MoreHorizontal, 
   ChevronLeft, ChevronRight, AlertTriangle, CheckCircle, XCircle, 
-  Calculator, TrendingUp as TrendingUpIcon, Settings, X, CreditCard,
-  Receipt, Target, ArrowRight, Clock, Shield
+  Settings, X, CreditCard,
+  Target, ArrowRight, Clock, Shield
 } from "lucide-react";
 
 // ─── Enhanced Types ───────────────────────────────────────────────────────────
@@ -37,6 +37,7 @@ export interface MonthlyBudgetCategory {
 
 export type PaymentMethod = "debit" | "credit" | "cash";
 export type FlowType = "spending" | "saving" | "investing" | "income";
+export type TransactionType = "expense" | "income" | "transfer" | "credit_payment";
 
 export interface BudgetTransaction {
   id: string;
@@ -44,7 +45,7 @@ export interface BudgetTransaction {
   amount: number;
   description: string;
   date: string;
-  type: "expense" | "income" | "transfer";
+  type: TransactionType;
   accountId: string;
   fromAccountId?: string;
   toAccountId?: string;
@@ -99,7 +100,6 @@ interface BudgetViewProps {
   accounts: Account[];
   categoryGroupSets: CategoryGroupSet[];
   transactionItems: TransactionItem[];
-  outlookProjection: OutlookProjection | null;
   budgetMetadata: BudgetMetadata | null;
   surplusCarryovers: SurplusCarryover[];
   
@@ -110,15 +110,15 @@ interface BudgetViewProps {
   onRemoveMonthlyCategory: (monthlyCatId: string) => void;
   onDeleteCategory: (id: string) => void;
   onAddTransaction: (transaction: BudgetTransaction) => void;
+  onUpdateTransaction: (transaction: BudgetTransaction) => void;
   onDeleteTransaction: (id: string) => void;
   onAddTransactionItem: (item: TransactionItem) => void;
-  onDeleteTransactionItem: (id: string) => void;
   onAddAccount: (account: Account) => void;
   onDeleteAccount: (id: string) => void;
   onUpdateAccount: (account: Account) => void;
+  onUpdateAccounts: (accounts: Account[]) => void;
   onSaveCategoryGroupSet: (set: CategoryGroupSet) => void;
   onApplyCategoryGroupSet: (setId: string) => void;
-  onUpdateOutlookProjection: (projection: OutlookProjection) => void;
   onUpdateBudgetMetadata: (metadata: BudgetMetadata) => void;
   onCreateSurplusCarryover: (carryover: SurplusCarryover) => void;
   onMarkSurplusApplied: (carryoverId: string) => void;
@@ -197,58 +197,30 @@ const calculateAccountBalances = (accounts: Account[], transactions: BudgetTrans
       .filter(t => t.type === "transfer" && t.toAccountId === account.id)
       .reduce((sum, t) => sum + t.amount, 0);
     
+    // Credit payments: money leaving this account (from) decreases balance, money arriving (to) increases balance
+    const creditPaymentsOut = transactions
+      .filter(t => t.type === "credit_payment" && t.fromAccountId === account.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const creditPaymentsIn = transactions
+      .filter(t => t.type === "credit_payment" && t.toAccountId === account.id)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    // Calculate balance based on account type
+    let calculatedBalance: number;
+    if (account.type === "credit") {
+      // Credit card: expenses increase debt (more negative), payments decrease debt (less negative)
+      // Start from currentBalance (should be negative or zero), subtract expenses (more debt), add payments (less debt)
+      calculatedBalance = account.currentBalance - expenses + creditPaymentsIn - creditPaymentsOut;
+    } else {
+      // Liquid accounts (checking, savings, cash, hysa, investment): normal balance calculation
+      calculatedBalance = account.currentBalance + income - expenses - transfersOut + transfersIn - creditPaymentsOut + creditPaymentsIn;
+    }
+    
     return {
       ...account,
-      currentBalance: account.currentBalance + income - expenses - transfersOut + transfersIn
+      currentBalance: calculatedBalance
     };
   });
-};
-
-const calculateProjectedNetWorth = (
-  accounts: Account[], 
-  transactions: BudgetTransaction[], 
-  years: number,
-  outlook: OutlookProjection | null
-) => {
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
-  
-  // Calculate average monthly surplus from last 3 months
-  const now = new Date();
-  const monthlySurpluses: number[] = [];
-  
-  for (let i = 0; i < 3; i++) {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthKey = getMonthKey(monthDate);
-    const monthTrans = getMonthTransactions(transactions, monthKey);
-    const income = monthTrans.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-    const expenses = monthTrans.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-    monthlySurpluses.push(income - expenses);
-  }
-  
-  const avgMonthlySurplus = monthlySurpluses.reduce((a, b) => a + b, 0) / monthlySurpluses.length;
-  
-  // Use custom growth rates if available
-  const liquidGrowthRate = outlook ? outlook.liquidGrowthRate / 100 : 0.04;
-  const investmentGrowthRate = outlook ? outlook.investmentGrowthRate / 100 : 0.08;
-  
-  const liquidAccounts = accounts.filter(a => a.type === "checking" || a.type === "hysa" || a.type === "cash" || a.type === "savings");
-  const investmentAccounts = accounts.filter(a => a.type === "investment");
-  
-  const liquidBalance = liquidAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
-  const investmentBalance = investmentAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
-  
-  // Future value with compound interest
-  const futureLiquid = liquidBalance * Math.pow(1 + liquidGrowthRate, years) + 
-                       (avgMonthlySurplus * 12 * years * (1 + liquidGrowthRate * years / 2));
-  const futureInvestment = investmentBalance * Math.pow(1 + investmentGrowthRate, years) + 
-                           (avgMonthlySurplus * 0.3 * 12 * years * Math.pow(1 + investmentGrowthRate, years / 2));
-  
-  return {
-    total: futureLiquid + futureInvestment,
-    liquid: futureLiquid,
-    invested: futureInvestment,
-    currentTotal: totalBalance
-  };
 };
 
 // ─── Budget View ──────────────────────────────────────────────────────────────
@@ -258,8 +230,6 @@ export default function BudgetView({
   transactions,
   accounts,
   categoryGroupSets,
-  transactionItems,
-  outlookProjection,
   budgetMetadata,
   surplusCarryovers,
   onAddCategory,
@@ -267,23 +237,23 @@ export default function BudgetView({
   onUpdateMonthlyCategory,
   onRemoveMonthlyCategory,
   onAddTransaction,
+  onUpdateTransaction,
   onDeleteTransaction,
-  onAddTransactionItem,
-  onDeleteTransactionItem,
   onAddAccount,
   onDeleteAccount,
+  onUpdateAccount,
+  onUpdateAccounts,
   onSaveCategoryGroupSet,
   onApplyCategoryGroupSet,
-  onUpdateOutlookProjection,
 }: BudgetViewProps) {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
-  const [showProjections, setShowProjections] = useState(false);
   const [showCategoryGroupSets, setShowCategorySets] = useState(false);
   const [showManageCategories, setShowManageCategories] = useState(false);
   const [showTransactionDetail, setShowTransactionDetail] = useState<BudgetTransaction | null>(null);
-  const [showOutlookSettings, setShowOutlookSettings] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<BudgetTransaction | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   
   const [newGroupSetName, setNewGroupSetName] = useState("");
@@ -293,7 +263,7 @@ export default function BudgetView({
   const [newTransactionAmount, setNewTransactionAmount] = useState("");
   const [newTransactionDescription, setNewTransactionDescription] = useState("");
   const [newTransactionCategory, setNewTransactionCategory] = useState("");
-  const [newTransactionType, setNewTransactionType] = useState<"expense" | "income" | "transfer">("expense");
+  const [newTransactionType, setNewTransactionType] = useState<"expense" | "income" | "transfer" | "credit_payment">("expense");
   const [newTransactionDate, setNewTransactionDate] = useState(new Date().toISOString().split("T")[0]);
   const [newTransactionAccount, setNewTransactionAccount] = useState("");
   const [newTransactionFromAccount, setNewTransactionFromAccount] = useState("");
@@ -306,12 +276,8 @@ export default function BudgetView({
   const [newAccountBalance, setNewAccountBalance] = useState("");
   const [newAccountCreditLimit, setNewAccountCreditLimit] = useState("");
 
-  const [newTransactionItemDescription, setNewTransactionItemDescription] = useState("");
-  const [newTransactionItemAmount, setNewTransactionItemAmount] = useState("");
-  const [newTransactionItemFlowType, setNewTransactionItemFlowType] = useState<FlowType>("spending");
-
-  const [outlookLiquidRate, setOutlookLiquidRate] = useState(outlookProjection?.liquidGrowthRate.toString() || "4");
-  const [outlookInvestmentRate, setOutlookInvestmentRate] = useState(outlookProjection?.investmentGrowthRate.toString() || "8");
+  // Add Transaction Step Navigation
+  const [newTransactionStep, setNewTransactionStep] = useState<1 | 2>(1);
 
   const currentMonthKey = getMonthKey(currentMonth);
   const monthTransactions = getMonthTransactions(transactions, currentMonthKey);
@@ -332,23 +298,51 @@ export default function BudgetView({
       .filter((cat): cat is Category & { monthlyId: string; monthlyCap: number } => cat !== null);
   }, [monthlyBudgetCategories, currentMonthKey, categories]);
 
-  // ─── 4-Pillar Financial Matrix ─────────────────────────────────────────────
-  const pillarData = useMemo(() => {
+  // ─── 3-Metric Financial Matrix ─────────────────────────────────────────────
+  const financialMetrics = useMemo(() => {
+    // 1. Income: Total income received for the month
     const income = monthTransactions
       .filter(t => t.type === "income")
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expenses = monthTransactions
-      .filter(t => t.type === "expense" && t.flowType === "spending")
+    // 2. Spending: Total expenses (all flow types that represent spending)
+    const spending = monthTransactions
+      .filter(t => t.type === "expense")
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const savings = monthTransactions
-      .filter(t => t.type === "expense" && t.flowType === "saving")
+    // 3. Invest: Total amount transferred into investment/brokerage accounts
+    const invest = monthTransactions
+      .filter(t => t.type === "transfer" && t.toAccountId)
+      .filter(t => {
+        const toAccount = accounts.find(a => a.id === t.toAccountId);
+        return toAccount?.type === "investment";
+      })
       .reduce((sum, t) => sum + t.amount, 0);
-    
-    const investments = monthTransactions
-      .filter(t => t.type === "expense" && t.flowType === "investing")
-      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 4. Net Savings Transfers: Money moved to/from HYSA or Savings
+    const savingsTransfers = monthTransactions
+      .filter(t => t.type === "transfer")
+      .filter(t => {
+        const fromAccount = accounts.find(a => a.id === t.fromAccountId);
+        const toAccount = accounts.find(a => a.id === t.toAccountId);
+        const isSavingsAccount = (acc: Account | undefined) => 
+          acc?.type === "hysa" || acc?.type === "savings";
+        return isSavingsAccount(fromAccount) || isSavingsAccount(toAccount);
+      })
+      .reduce((sum, t) => {
+        const fromAccount = accounts.find(a => a.id === t.fromAccountId);
+        const toAccount = accounts.find(a => a.id === t.toAccountId);
+        const isFromSavings = fromAccount?.type === "hysa" || fromAccount?.type === "savings";
+        const isToSavings = toAccount?.type === "hysa" || toAccount?.type === "savings";
+        
+        // ADD amounts transferred INTO savings, SUBTRACT amounts transferred OUT
+        if (isToSavings && !isFromSavings) return sum + t.amount; // Into savings
+        if (isFromSavings && !isToSavings) return sum - t.amount; // Out of savings
+        return sum; // Between savings accounts, net zero
+      }, 0);
+
+    // 5. Saving = (Income - Spending - Invest) + Net Savings Transfers
+    const saving = (income - spending - invest) + savingsTransfers;
 
     // Previous surplus carryover
     const previousSurplus = surplusCarryovers
@@ -356,13 +350,13 @@ export default function BudgetView({
       .reduce((sum, sc) => sum + sc.amount, 0);
 
     return {
-      income: { expected: currentMonthCategories.filter(c => c.type === "income").reduce((s, c) => s + c.monthlyCap, 0), actual: income },
-      spend: { expected: currentMonthCategories.filter(c => c.type === "expense").reduce((s, c) => s + c.monthlyCap, 0), actual: expenses },
-      save: { expected: 0, actual: savings },
-      invest: { expected: 0, actual: investments },
+      income,
+      spending,
+      invest,
+      saving,
       previousSurplus
     };
-  }, [monthTransactions, currentMonthCategories, surplusCarryovers, currentMonthKey]);
+  }, [monthTransactions, accounts, surplusCarryovers, currentMonthKey]);
 
   const totalExpenses = monthTransactions
     .filter(t => t.type === "expense")
@@ -385,7 +379,13 @@ export default function BudgetView({
     return calculateAccountBalances(accounts, transactions);
   }, [accounts, transactions]);
 
-  const totalAccountBalance = accountBalances.reduce((sum, acc) => sum + acc.currentBalance, 0);
+  const liquidAssetsTotal = accountBalances
+    .filter(acc => acc.type !== "credit")
+    .reduce((sum, acc) => sum + acc.currentBalance, 0);
+  
+  const creditUsedTotal = accountBalances
+    .filter(acc => acc.type === "credit")
+    .reduce((sum, acc) => sum + Math.abs(acc.currentBalance), 0);
 
   const overspentCategories = useMemo(() => {
     return currentMonthCategories
@@ -397,11 +397,6 @@ export default function BudgetView({
       .filter(cat => cat.over > 0)
       .sort((a, b) => b.over - a.over);
   }, [currentMonthCategories, transactions, currentMonthKey]);
-
-  const [projectionYears, setProjectionYears] = useState(5);
-  const projections = useMemo(() => {
-    return calculateProjectedNetWorth(accountBalances, transactions, projectionYears, outlookProjection);
-  }, [accountBalances, transactions, projectionYears, outlookProjection]);
 
   const paceStatus = useMemo(() => {
     const { projected, totalBudget } = spendingAnalytics;
@@ -427,6 +422,13 @@ export default function BudgetView({
           isOverThreshold: utilization > threshold
         };
       });
+  }, [accountBalances]);
+
+  // Negative balance alerts for liquid accounts
+  const negativeBalanceAlerts = useMemo(() => {
+    return accountBalances.filter(acc => 
+      acc.type !== "credit" && acc.currentBalance < 0
+    );
   }, [accountBalances]);
 
   // Get last updated timestamp for current month
@@ -458,7 +460,10 @@ export default function BudgetView({
   };
 
   const handleAddTransaction = () => {
-    if (!newTransactionAmount || Number(newTransactionAmount) <= 0) return;
+    if (!newTransactionAmount || newTransactionAmount === "") return;
+    
+    const amount = Number(newTransactionAmount);
+    if (isNaN(amount)) return;
     
     if (newTransactionType === "transfer") {
       // Transfer validation: both accounts required and must differ
@@ -479,22 +484,78 @@ export default function BudgetView({
         isCreditPaid: true,
         flowType: "saving",
       });
-    } else {
-      if (!newTransactionCategory || !newTransactionAccount) return;
+    } else if (newTransactionType === "credit_payment") {
+      // Credit payment validation: both accounts required and must differ
+      if (!newTransactionFromAccount || !newTransactionToAccount) return;
+      if (newTransactionFromAccount === newTransactionToAccount) return;
+      
+      const fromAccount = accounts.find(a => a.id === newTransactionFromAccount);
+      const toAccount = accounts.find(a => a.id === newTransactionToAccount);
+      
+      // Validate that fromAccount is a liquid account and toAccount is a credit account
+      if (!fromAccount || !toAccount) return;
+      if (fromAccount.type === "credit" || toAccount.type !== "credit") return;
+      
       onAddTransaction({
         id: Date.now().toString(),
-        categoryId: newTransactionCategory,
+        categoryId: "",
         amount: Number(newTransactionAmount),
-        description: newTransactionDescription,
+        description: newTransactionDescription || "Credit Card Payment",
         date: newTransactionDate,
-        type: newTransactionType,
-        accountId: newTransactionAccount,
-        paymentMethod: newTransactionPaymentMethod,
-        isCreditPaid: newTransactionPaymentMethod !== "credit",
-        flowType: newTransactionFlowType,
+        type: "credit_payment",
+        accountId: newTransactionFromAccount,
+        fromAccountId: newTransactionFromAccount,
+        toAccountId: newTransactionToAccount,
+        paymentMethod: "debit",
+        isCreditPaid: true,
+        flowType: "saving",
       });
+    } else {
+      // For expense/income transactions
+      if (!newTransactionAccount) return;
+      
+      const selectedAccount = accounts.find(a => a.id === newTransactionAccount);
+      if (!selectedAccount) return;
+      
+      // For income transactions, category is optional (use empty string if not provided)
+      // For expense transactions, category is required
+      if (newTransactionType === "expense" && !newTransactionCategory) return;
+      
+      const categoryId = newTransactionCategory || "";
+      
+      // If credit account is selected for expense, automatically use credit_payment type
+      if (newTransactionType === "expense" && selectedAccount.type === "credit") {
+        // This is a credit card charge - reduce the credit balance (make it more negative)
+        onAddTransaction({
+          id: Date.now().toString(),
+          categoryId: categoryId,
+          amount: Number(newTransactionAmount),
+          description: newTransactionDescription,
+          date: newTransactionDate,
+          type: "expense",
+          accountId: newTransactionAccount,
+          paymentMethod: "credit",
+          isCreditPaid: false,
+          flowType: newTransactionFlowType,
+        });
+      } else {
+        // Normal expense/income transaction
+        onAddTransaction({
+          id: Date.now().toString(),
+          categoryId: categoryId,
+          amount: Number(newTransactionAmount),
+          description: newTransactionDescription,
+          date: newTransactionDate,
+          type: newTransactionType,
+          accountId: newTransactionAccount,
+          paymentMethod: newTransactionPaymentMethod,
+          isCreditPaid: newTransactionPaymentMethod !== "credit",
+          flowType: newTransactionFlowType,
+        });
+      }
     }
     
+    // Reset all form state
     setNewTransactionAmount("");
     setNewTransactionDescription("");
     setNewTransactionCategory("");
@@ -505,6 +566,7 @@ export default function BudgetView({
     setNewTransactionToAccount("");
     setNewTransactionPaymentMethod("debit");
     setNewTransactionFlowType("spending");
+    setNewTransactionStep(1); // Reset to step 1
     setShowAddTransaction(false);
   };
 
@@ -566,27 +628,104 @@ export default function BudgetView({
     onRemoveMonthlyCategory(monthlyCatId);
   };
 
-  const handleAddTransactionItem = () => {
-    if (!showTransactionDetail || !newTransactionItemDescription || !newTransactionItemAmount) return;
-    onAddTransactionItem({
-      id: Date.now().toString(),
-      transactionId: showTransactionDetail.id,
-      description: newTransactionItemDescription,
-      amount: Number(newTransactionItemAmount),
-      flowType: newTransactionItemFlowType,
+  const handleUpdateTransaction = (updatedTransaction: BudgetTransaction) => {
+    const originalTransaction = transactions.find(t => t.id === updatedTransaction.id);
+    if (!originalTransaction) return;
+
+    // Reverse original transaction
+    const reversedAccounts = accounts.map(acc => {
+      if (originalTransaction.type === "income" && acc.id === originalTransaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance - originalTransaction.amount };
+      }
+      if (originalTransaction.type === "expense" && acc.id === originalTransaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance + originalTransaction.amount };
+      }
+      if (originalTransaction.type === "transfer") {
+        if (acc.id === originalTransaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + originalTransaction.amount };
+        }
+        if (acc.id === originalTransaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - originalTransaction.amount };
+        }
+      }
+      if (originalTransaction.type === "credit_payment") {
+        if (acc.id === originalTransaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + originalTransaction.amount };
+        }
+        if (acc.id === originalTransaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - originalTransaction.amount };
+        }
+      }
+      return acc;
     });
-    setNewTransactionItemDescription("");
-    setNewTransactionItemAmount("");
+
+    // Apply updated transaction
+    const updatedAccounts = reversedAccounts.map(acc => {
+      if (updatedTransaction.type === "income" && acc.id === updatedTransaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance + updatedTransaction.amount };
+      }
+      if (updatedTransaction.type === "expense" && acc.id === updatedTransaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance - updatedTransaction.amount };
+      }
+      if (updatedTransaction.type === "transfer") {
+        if (acc.id === updatedTransaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - updatedTransaction.amount };
+        }
+        if (acc.id === updatedTransaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + updatedTransaction.amount };
+        }
+      }
+      if (updatedTransaction.type === "credit_payment") {
+        if (acc.id === updatedTransaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - updatedTransaction.amount };
+        }
+        if (acc.id === updatedTransaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + updatedTransaction.amount };
+        }
+      }
+      return acc;
+    });
+
+    onUpdateAccounts(updatedAccounts);
+    onUpdateTransaction(updatedTransaction);
+    setEditingTransaction(null);
   };
 
-  const handleSaveOutlookSettings = () => {
-    if (!outlookProjection) return;
-    onUpdateOutlookProjection({
-      ...outlookProjection,
-      liquidGrowthRate: Number(outlookLiquidRate),
-      investmentGrowthRate: Number(outlookInvestmentRate),
+  const handleDeleteTransactionWithReversal = (transactionId: string) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    // Reverse the transaction's balance impact
+    const reversedAccounts = accounts.map(acc => {
+      if (transaction.type === "income" && acc.id === transaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance - transaction.amount };
+      }
+      if (transaction.type === "expense" && acc.id === transaction.accountId) {
+        return { ...acc, currentBalance: acc.currentBalance + transaction.amount };
+      }
+      if (transaction.type === "transfer") {
+        if (acc.id === transaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + transaction.amount };
+        }
+        if (acc.id === transaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - transaction.amount };
+        }
+      }
+      if (transaction.type === "credit_payment") {
+        if (acc.id === transaction.fromAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance + transaction.amount };
+        }
+        if (acc.id === transaction.toAccountId) {
+          return { ...acc, currentBalance: acc.currentBalance - transaction.amount };
+        }
+      }
+      return acc;
     });
-    setShowOutlookSettings(false);
+
+    onUpdateAccounts(reversedAccounts);
+    onDeleteTransaction(transactionId);
+    setEditingTransaction(null);
+    setShowTransactionDetail(null);
   };
 
   const flowTypeColors: Record<FlowType, { bg: string; text: string; label: string }> = {
@@ -607,11 +746,6 @@ export default function BudgetView({
     cat => !monthlyBudgetCategories.some(mc => mc.monthKey === currentMonthKey && mc.categoryId === cat.id)
   );
 
-  // Get transaction items for selected transaction
-  const selectedTransactionItems = showTransactionDetail 
-    ? transactionItems.filter(ti => ti.transactionId === showTransactionDetail.id)
-    : [];
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header with Month Navigation */}
@@ -619,20 +753,13 @@ export default function BudgetView({
         <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Finance</p>
         <div className="flex items-center justify-between mt-1">
           <h1 className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 22 }}>Budget</h1>
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             {lastUpdatedFormatted && (
               <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ backgroundColor: "rgba(99,102,241,.1)" }}>
                 <Clock size={10} style={{ color: "#6366F1" }} />
                 <span style={{ fontSize: 9, color: "#6366F1", fontWeight: 600 }}>{lastUpdatedFormatted}</span>
               </div>
             )}
-            <button 
-              onClick={() => setShowProjections(!showProjections)}
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(99,102,241,.15)" }}
-            >
-              <Calculator size={16} style={{ color: "#6366F1" }} />
-            </button>
           </div>
         </div>
       </div>
@@ -655,71 +782,10 @@ export default function BudgetView({
         </button>
       </div>
 
-      {/* Projections Panel */}
-      {showProjections && (
-        <div className="px-4 flex-shrink-0 mb-3">
-          <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <TrendingUpIcon size={16} style={{ color: "#6366F1" }} />
-                <p className="text-slate-900 dark:text-slate-50 font-bold" style={{ fontSize: 13 }}>Wealth Projections</p>
-              </div>
-              <button 
-                onClick={() => setShowOutlookSettings(true)}
-                className="w-6 h-6 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "rgba(99,102,241,.15)" }}
-              >
-                <Settings size={12} style={{ color: "#6366F1" }} />
-              </button>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-slate-500 dark:text-slate-400 mb-2" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Timeframe</p>
-              <div className="flex gap-2">
-                {[1, 3, 5, 10].map(years => (
-                  <button
-                    key={years}
-                    onClick={() => setProjectionYears(years)}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold"
-                    style={{
-                      backgroundColor: projectionYears === years ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)",
-                      color: projectionYears === years ? "#6366F1" : "#4E4E72"
-                    }}
-                  >
-                    {years}Y
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 rounded-lg" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
-                <span className="text-slate-600 dark:text-slate-400" style={{ fontSize: 11 }}>Current Net Worth</span>
-                <span className="font-bold text-slate-900 dark:text-slate-50" style={{ fontSize: 13 }}>${projections.currentTotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
-                <span className="text-slate-600 dark:text-slate-400" style={{ fontSize: 11 }}>Projected ({projectionYears} years)</span>
-                <span className="font-bold" style={{ color: "#10B981", fontSize: 13 }}>${projections.total.toFixed(2)}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: "rgba(99,102,241,.08)" }}>
-                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>Liquid</p>
-                  <p className="font-bold" style={{ color: "#6366F1", fontSize: 12 }}>${projections.liquid.toFixed(0)}</p>
-                </div>
-                <div className="p-2 rounded-lg" style={{ backgroundColor: "rgba(5,150,105,.08)" }}>
-                  <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>Invested</p>
-                  <p className="font-bold" style={{ color: "#059669", fontSize: 12 }}>${projections.invested.toFixed(0)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-3" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         
-        {/* ─── 4-PILLAR FINANCIAL MATRIX ─────────────────────────────────────── */}
+        {/* ─── FINANCIAL MATRIX: INCOME VS SPENDING ──────────────────────────── */}
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
             <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, color: "#475569", letterSpacing: "0.08em", textTransform: "uppercase" }}>Financial Matrix</p>
@@ -732,58 +798,70 @@ export default function BudgetView({
           </div>
           
           {/* Previous Surplus Carryover */}
-          {pillarData.previousSurplus > 0 && (
+          {financialMetrics.previousSurplus > 0 && (
             <div className="mb-3 p-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ArrowRight size={12} style={{ color: "#10B981" }} />
                   <span className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 600 }}>Previous Surplus</span>
                 </div>
-                <span className="font-bold" style={{ color: "#10B981", fontSize: 12 }}>+${pillarData.previousSurplus.toFixed(2)}</span>
+                <span className="font-bold" style={{ color: "#10B981", fontSize: 12 }}>+${financialMetrics.previousSurplus.toFixed(2)}</span>
               </div>
             </div>
           )}
 
-          {/* 4 Pillars */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Income Pillar */}
+          {/* Income vs Spending Visual */}
+          <div className="space-y-3">
+            {/* Income */}
             <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(5,150,105,.08)" }}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <TrendingUp size={12} style={{ color: "#059669" }} />
-                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Income</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp size={14} style={{ color: "#059669" }} />
+                  <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Income</p>
+                </div>
+                <p className="font-bold" style={{ color: "#059669", fontSize: 18 }}>${financialMetrics.income.toFixed(2)}</p>
               </div>
-              <p className="font-bold" style={{ color: "#059669", fontSize: 16 }}>${pillarData.income.actual.toFixed(2)}</p>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>of ${pillarData.income.expected.toFixed(2)} expected</p>
+              <div className="w-full h-2 rounded-full" style={{ backgroundColor: "rgba(5,150,105,.15)" }}>
+                <div className="h-2 rounded-full" style={{ width: "100%", backgroundColor: "#059669" }} />
+              </div>
             </div>
 
-            {/* Spend Pillar */}
+            {/* Spending */}
             <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(239,68,68,.08)" }}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <TrendingDown size={12} style={{ color: "#EF4444" }} />
-                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Spend</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <TrendingDown size={14} style={{ color: "#EF4444" }} />
+                  <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Spending</p>
+                </div>
+                <p className="font-bold" style={{ color: "#EF4444", fontSize: 18 }}>${financialMetrics.spending.toFixed(2)}</p>
               </div>
-              <p className="font-bold" style={{ color: "#EF4444", fontSize: 16 }}>${pillarData.spend.actual.toFixed(2)}</p>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>of ${pillarData.spend.expected.toFixed(2)} budget</p>
+              <div className="w-full h-2 rounded-full" style={{ backgroundColor: "rgba(239,68,68,.15)" }}>
+                <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min((financialMetrics.spending / (financialMetrics.income || 1)) * 100, 100)}%`, backgroundColor: "#EF4444" }} />
+              </div>
             </div>
 
-            {/* Save Pillar */}
-            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Shield size={12} style={{ color: "#10B981" }} />
-                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Save</p>
-              </div>
-              <p className="font-bold" style={{ color: "#10B981", fontSize: 16 }}>${pillarData.save.actual.toFixed(2)}</p>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>Tax & Savings</p>
-            </div>
-
-            {/* Invest Pillar */}
+            {/* Invest */}
             <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(99,102,241,.08)" }}>
-              <div className="flex items-center gap-1.5 mb-2">
-                <Target size={12} style={{ color: "#6366F1" }} />
-                <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase" }}>Invest</p>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Target size={14} style={{ color: "#6366F1" }} />
+                  <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Invest</p>
+                </div>
+                <p className="font-bold" style={{ color: "#6366F1", fontSize: 18 }}>${financialMetrics.invest.toFixed(2)}</p>
               </div>
-              <p className="font-bold" style={{ color: "#6366F1", fontSize: 16 }}>${pillarData.invest.actual.toFixed(2)}</p>
-              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, marginTop: 2 }}>Portfolios</p>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>Transferred to investment accounts</p>
+            </div>
+
+            {/* Saving */}
+            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Shield size={14} style={{ color: "#10B981" }} />
+                  <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Saving</p>
+                </div>
+                <p className="font-bold" style={{ color: "#10B981", fontSize: 18 }}>${financialMetrics.saving.toFixed(2)}</p>
+              </div>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9 }}>(Income - Spending - Invest) + Net Savings Transfers</p>
             </div>
           </div>
           
@@ -828,6 +906,24 @@ export default function BudgetView({
           </div>
         )}
 
+        {/* Negative Balance Alerts */}
+        {negativeBalanceAlerts.length > 0 && (
+          <div className="rounded-2xl p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle size={14} style={{ color: "#EF4444" }} />
+              <p className="font-bold" style={{ fontSize: 12, color: "#EF4444" }}>Negative Balance Alert</p>
+            </div>
+            {negativeBalanceAlerts.map(acc => (
+              <div key={acc.id} className="flex items-center justify-between py-1">
+                <span className="text-slate-700 dark:text-slate-300" style={{ fontSize: 11 }}>{acc.name}</span>
+                <span className="font-bold" style={{ fontSize: 11, color: "#EF4444" }}>
+                  ${acc.currentBalance.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Accounts Summary */}
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
@@ -835,15 +931,24 @@ export default function BudgetView({
               <Wallet size={14} style={{ color: "#2563EB" }} />
               <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Accounts</p>
             </div>
-            <div className="flex items-center gap-2">
-              <p className="font-bold text-slate-900 dark:text-slate-50" style={{ fontSize: 14 }}>${totalAccountBalance.toFixed(2)}</p>
-              <button onClick={() => setShowAccounts(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
-                <Plus size={12} style={{ color: "#2563EB" }} />
-              </button>
+            <button onClick={() => setShowAccounts(true)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(37,99,235,.15)" }}>
+              <Plus size={12} style={{ color: "#2563EB" }} />
+            </button>
+          </div>
+          
+          {/* Liquid Assets and Credit Used Summary */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="p-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,.08)" }}>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 600 }}>Liquid Assets</p>
+              <p className="font-bold" style={{ color: "#10B981", fontSize: 12 }}>${liquidAssetsTotal.toFixed(2)}</p>
+            </div>
+            <div className="p-2 rounded-lg" style={{ backgroundColor: "rgba(239,68,68,.08)" }}>
+              <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 9, fontWeight: 600 }}>Credit Used</p>
+              <p className="font-bold" style={{ color: "#EF4444", fontSize: 12 }}>${creditUsedTotal.toFixed(2)}</p>
             </div>
           </div>
           
-          {accounts.length === 0 ? (
+            {accounts.length === 0 ? (
             <div className="text-center py-4">
               <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>No accounts yet</p>
               <button onClick={() => setShowAccounts(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}>
@@ -852,28 +957,42 @@ export default function BudgetView({
             </div>
           ) : (
             <div className="space-y-2">
-              {accountBalances.slice(0, 3).map(account => (
-                <div key={account.id} className="flex items-center justify-between p-2 rounded-lg" style={{ backgroundColor: "rgba(15,23,42,.03)" }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ 
-                      backgroundColor: account.type === "credit" ? "#EF4444" : 
-                                     account.type === "investment" ? "#6366F1" : 
-                                     account.type === "hysa" ? "#10B981" : 
-                                     account.type === "savings" ? "#14B8A6" : "#2563EB" 
-                    }} />
-                    <span className="text-slate-900 dark:text-slate-50 text-xs font-semibold">{account.name}</span>
+              {accountBalances.slice(0, 3).map(account => {
+                const isNegative = account.type !== "credit" && account.currentBalance < 0;
+                return (
+                  <div 
+                    key={account.id} 
+                    onClick={() => setSelectedAccount(account)}
+                    className="flex items-center justify-between p-2 rounded-lg cursor-pointer relative" 
+                    style={{ 
+                      backgroundColor: "rgba(15,23,42,.03)",
+                      outline: isNegative ? "2px solid #EF4444" : "none",
+                      outlineOffset: isNegative ? "2px" : "0"
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ 
+                        backgroundColor: account.type === "credit" ? "#EF4444" : 
+                                       account.type === "investment" ? "#6366F1" : 
+                                       account.type === "hysa" ? "#10B981" : 
+                                       account.type === "savings" ? "#14B8A6" : "#2563EB" 
+                      }} />
+                      <span className="text-slate-900 dark:text-slate-50 text-xs font-semibold">{account.name}</span>
+                      {isNegative && <AlertTriangle size={12} style={{ color: "#EF4444" }} />}
+                    </div>
+                    <span className="text-xs font-bold" style={{ color: account.currentBalance >= 0 ? "#059669" : "#EF4444" }}>
+                      ${account.currentBalance.toFixed(2)}
+                    </span>
                   </div>
-                  <span className="text-xs font-bold" style={{ color: account.currentBalance >= 0 ? "#059669" : "#EF4444" }}>
-                    ${account.currentBalance.toFixed(2)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
               {accounts.length > 3 && (
                 <p className="text-slate-500 dark:text-slate-400 text-center" style={{ fontSize: 10 }}>+{accounts.length - 3} more</p>
               )}
             </div>
           )}
         </div>
+
 
         {/* Over-Spending Alerts */}
         {overspentCategories.length > 0 && (
@@ -895,7 +1014,7 @@ export default function BudgetView({
         <div className="rounded-2xl p-4 bg-white/70 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-slate-900 dark:text-slate-50" style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <PieChart size={14} style={{ color: "#2563EB" }} />
+              <Target size={14} style={{ color: "#2563EB" }} />
               <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Categories</p>
             </div>
             <div className="flex items-center gap-1.5">
@@ -910,7 +1029,7 @@ export default function BudgetView({
           
           {currentMonthCategories.length === 0 ? (
             <div className="text-center py-6">
-              <PieChart size={32} style={{ color: "#475569", marginBottom: 8 }} />
+              <Target size={32} style={{ color: "#475569", marginBottom: 8 }} />
               <p className="text-slate-600 dark:text-slate-400" style={{ fontSize: 12 }}>No categories for this month</p>
               <button onClick={() => setShowManageCategories(true)} className="mt-2 px-4 py-2 rounded-full font-bold text-xs" style={{ backgroundColor: "rgba(37,99,235,.2)", color: "#2563EB" }}>
                 Add Categories to Month
@@ -930,14 +1049,9 @@ export default function BudgetView({
                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
                         <span className="text-slate-900 dark:text-slate-50 text-sm font-semibold">{cat.name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold" style={{ color: isOver ? "#EF4444" : "#475569" }}>
-                          ${spent.toFixed(2)} / ${cat.monthlyCap.toFixed(2)}
-                        </span>
-                        <button onClick={() => handleRemoveFromMonth(cat.monthlyId)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.1)" }}>
-                          <X size={10} style={{ color: "#EF4444" }} />
-                        </button>
-                      </div>
+                      <span className="text-xs font-bold" style={{ color: isOver ? "#EF4444" : "#475569" }}>
+                        ${spent.toFixed(2)} / ${cat.monthlyCap.toFixed(2)}
+                      </span>
                     </div>
                     <div className="w-full h-2 rounded-full" style={{ backgroundColor: "rgba(15,23,42,.06)" }}>
                       <div className="h-2 rounded-full transition-all" style={{ width: `${percent}%`, backgroundColor: isOver ? "#EF4444" : cat.color }} />
@@ -1086,128 +1200,333 @@ export default function BudgetView({
 
       {/* Add Transaction Modal */}
       {showAddTransaction && (
-        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowAddTransaction(false)}>
-          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+        <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => { setShowAddTransaction(false); setNewTransactionStep(1); }}>
+          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl overflow-y-auto max-h-[85vh] sm:max-h-[90vh] p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>
             <h3 className="text-white font-bold text-base">New Transaction</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => setNewTransactionType("expense")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "expense" ? "rgba(244,63,94,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "expense" ? "#F43F5E" : "#4E4E72" }}>Expense</button>
-              <button onClick={() => setNewTransactionType("income")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "income" ? "rgba(16,185,129,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "income" ? "#10B981" : "#4E4E72" }}>Income</button>
-              <button onClick={() => setNewTransactionType("transfer")} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionType === "transfer" ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionType === "transfer" ? "#14B8A6" : "#4E4E72" }}>Transfer</button>
-            </div>
-            <input type="number" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" placeholder="Amount ($)" value={newTransactionAmount} onChange={e => setNewTransactionAmount(e.target.value)} autoFocus />
-            <input className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" placeholder="Description (optional)" value={newTransactionDescription} onChange={e => setNewTransactionDescription(e.target.value)} />
             
-            {newTransactionType === "transfer" ? (
+            {/* Step 1: Transaction Type Selection */}
+            {newTransactionStep === 1 && (
               <>
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>From Account (Source)</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {accounts.map(acc => (
-                      <button key={acc.id} onClick={() => setNewTransactionFromAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionFromAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionFromAccount === acc.id ? "#14B8A6" : "#4E4E72", opacity: newTransactionToAccount === acc.id ? 0.4 : 1 }}>
-                        {acc.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>To Account (Destination)</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {accounts.map(acc => (
-                      <button key={acc.id} onClick={() => setNewTransactionToAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionToAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", color: newTransactionToAccount === acc.id ? "#14B8A6" : "#4E4E72", opacity: newTransactionFromAccount === acc.id ? 0.4 : 1 }}>
-                        {acc.name}
-                      </button>
-                    ))}
-                  </div>
-                  {newTransactionFromAccount && newTransactionToAccount && newTransactionFromAccount === newTransactionToAccount && (
-                    <p className="text-red-400 mt-2" style={{ fontSize: 10, fontWeight: 600 }}>From and To accounts must be different</p>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Tag (optional)</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {currentMonthCategories.map(cat => (
-                      <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Account</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {accounts.map(acc => (
-                      <button key={acc.id} onClick={() => setNewTransactionAccount(acc.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionAccount === acc.id ? "rgba(37,99,235,.2)" : "rgba(255,255,255,.06)", color: newTransactionAccount === acc.id ? "#2563EB" : "#4E4E72" }}>
-                        {acc.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Payment Method</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["debit", "credit", "cash"] as PaymentMethod[]).map(method => (
-                      <button key={method} onClick={() => setNewTransactionPaymentMethod(method)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionPaymentMethod === method ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", color: newTransactionPaymentMethod === method ? "#6366F1" : "#4E4E72" }}>
-                        {method === "debit" ? "💳 Debit" : method === "credit" ? "🏦 Credit" : "💵 Cash"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Flow Type</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["spending", "saving", "investing", "income"] as FlowType[]).map(flow => (
-                      <button key={flow} onClick={() => setNewTransactionFlowType(flow)} className="py-2.5 rounded-xl text-xs font-bold capitalize" style={{ backgroundColor: newTransactionFlowType === flow ? `${flowTypeColors[flow].bg}` : "rgba(255,255,255,.06)", color: newTransactionFlowType === flow ? flowTypeColors[flow].text : "#4E4E72" }}>
-                        {flow}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {currentMonthCategories.map(cat => (
-                      <button key={cat.monthlyId} onClick={() => setNewTransactionCategory(cat.id)} className="py-2.5 rounded-xl text-xs font-bold" style={{ backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" }}>
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
+                <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Step 1: Select Transaction Type</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => { setNewTransactionType("expense"); setNewTransactionStep(2); }}
+                    className="p-4 rounded-xl text-left border-2 border-transparent hover:border-red-400/50 transition-all"
+                    style={{ backgroundColor: "rgba(244,63,94,.15)" }}
+                  >
+                    <TrendingDown size={24} style={{ color: "#F43F5E", marginBottom: 8 }} />
+                    <p className="text-white font-bold text-sm">Expense</p>
+                    <p className="text-stone-400" style={{ fontSize: 10 }}>Money spent</p>
+                  </button>
+                  <button 
+                    onClick={() => { setNewTransactionType("income"); setNewTransactionStep(2); }}
+                    className="p-4 rounded-xl text-left border-2 border-transparent hover:border-emerald-400/50 transition-all"
+                    style={{ backgroundColor: "rgba(16,185,129,.15)" }}
+                  >
+                    <TrendingUp size={24} style={{ color: "#10B981", marginBottom: 8 }} />
+                    <p className="text-white font-bold text-sm">Income</p>
+                    <p className="text-stone-400" style={{ fontSize: 10 }}>Money received</p>
+                  </button>
+                  <button 
+                    onClick={() => { setNewTransactionType("transfer"); setNewTransactionStep(2); }}
+                    className="p-4 rounded-xl text-left border-2 border-transparent hover:border-teal-400/50 transition-all"
+                    style={{ backgroundColor: "rgba(20,184,166,.15)" }}
+                  >
+                    <ArrowRight size={24} style={{ color: "#14B8A6", marginBottom: 8 }} />
+                    <p className="text-white font-bold text-sm">Transfer</p>
+                    <p className="text-stone-400" style={{ fontSize: 10 }}>Between accounts</p>
+                  </button>
+                  <button 
+                    onClick={() => { setNewTransactionType("credit_payment"); setNewTransactionStep(2); }}
+                    className="p-4 rounded-xl text-left border-2 border-transparent hover:border-indigo-400/50 transition-all"
+                    style={{ backgroundColor: "rgba(99,102,241,.15)" }}
+                  >
+                    <CreditCard size={24} style={{ color: "#6366F1", marginBottom: 8 }} />
+                    <p className="text-white font-bold text-sm">Credit Payment</p>
+                    <p className="text-stone-400" style={{ fontSize: 10 }}>Pay credit card</p>
+                  </button>
                 </div>
               </>
             )}
-            <input type="date" className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" value={newTransactionDate} onChange={e => setNewTransactionDate(e.target.value)} />
-            <button onClick={handleAddTransaction} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>Add Transaction</button>
+
+            {/* Step 2: Type-Specific Form */}
+            {newTransactionStep === 2 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <button 
+                    onClick={() => setNewTransactionStep(1)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: "rgba(255,255,255,.06)", color: "#7878A4" }}
+                  >
+                    <ChevronLeft size={14} />
+                    Back
+                  </button>
+                  <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>
+                    {newTransactionType === "expense" && "Expense Details"}
+                    {newTransactionType === "income" && "Income Details"}
+                    {newTransactionType === "transfer" && "Transfer Details"}
+                    {newTransactionType === "credit_payment" && "Credit Payment Details"}
+                  </p>
+                </div>
+
+                {/* Amount and Description (common to all types) */}
+                <input 
+                  type="number" 
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  placeholder="Amount ($)" 
+                  value={newTransactionAmount} 
+                  onChange={e => setNewTransactionAmount(e.target.value)} 
+                  autoFocus 
+                />
+                <input 
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  placeholder="Description (optional)" 
+                  value={newTransactionDescription} 
+                  onChange={e => setNewTransactionDescription(e.target.value)} 
+                />
+
+                {/* Income Form */}
+                {newTransactionType === "income" && (
+                  <>
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Destination Account</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts
+                          .filter(acc => ["checking", "savings", "hysa", "cash"].includes(acc.type))
+                          .map(acc => (
+                            <button 
+                              key={acc.id} 
+                              onClick={() => setNewTransactionAccount(acc.id)} 
+                              className="py-2.5 rounded-xl text-xs font-bold"
+                              style={{ 
+                                backgroundColor: newTransactionAccount === acc.id ? "rgba(16,185,129,.2)" : "rgba(255,255,255,.06)", 
+                                color: newTransactionAccount === acc.id ? "#10B981" : "#4E4E72" 
+                              }}
+                            >
+                              {acc.name}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentMonthCategories.filter(cat => cat.type === "income").map(cat => (
+                          <button 
+                            key={cat.monthlyId} 
+                            onClick={() => setNewTransactionCategory(cat.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", 
+                              color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" 
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Expense Form */}
+                {newTransactionType === "expense" && (
+                  <>
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Account</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts.map(acc => (
+                          <button 
+                            key={acc.id} 
+                            onClick={() => setNewTransactionAccount(acc.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionAccount === acc.id ? "rgba(244,63,94,.2)" : "rgba(255,255,255,.06)", 
+                              color: newTransactionAccount === acc.id ? "#F43F5E" : "#4E4E72" 
+                            }}
+                          >
+                            {acc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Category</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentMonthCategories.filter(cat => cat.type === "expense").map(cat => (
+                          <button 
+                            key={cat.monthlyId} 
+                            onClick={() => setNewTransactionCategory(cat.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", 
+                              color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" 
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Transfer Form */}
+                {newTransactionType === "transfer" && (
+                  <>
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transfer From (Source)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts
+                          .filter(acc => acc.type !== "credit")
+                          .map(acc => (
+                            <button 
+                              key={acc.id} 
+                              onClick={() => setNewTransactionFromAccount(acc.id)} 
+                              className="py-2.5 rounded-xl text-xs font-bold"
+                              style={{ 
+                                backgroundColor: newTransactionFromAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", 
+                                color: newTransactionFromAccount === acc.id ? "#14B8A6" : "#4E4E72",
+                                opacity: newTransactionToAccount === acc.id ? 0.4 : 1
+                              }}
+                            >
+                              {acc.name}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Transfer To (Destination)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts
+                          .filter(acc => acc.type !== "credit")
+                          .map(acc => (
+                            <button 
+                              key={acc.id} 
+                              onClick={() => setNewTransactionToAccount(acc.id)} 
+                              className="py-2.5 rounded-xl text-xs font-bold"
+                              style={{ 
+                                backgroundColor: newTransactionToAccount === acc.id ? "rgba(20,184,166,.2)" : "rgba(255,255,255,.06)", 
+                                color: newTransactionToAccount === acc.id ? "#14B8A6" : "#4E4E72",
+                                opacity: newTransactionFromAccount === acc.id ? 0.4 : 1
+                              }}
+                            >
+                              {acc.name}
+                            </button>
+                          ))}
+                      </div>
+                      {newTransactionFromAccount && newTransactionToAccount && newTransactionFromAccount === newTransactionToAccount && (
+                        <p className="text-red-400 mt-2" style={{ fontSize: 10, fontWeight: 600 }}>From and To accounts must be different</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Tag (optional)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {currentMonthCategories.map(cat => (
+                          <button 
+                            key={cat.monthlyId} 
+                            onClick={() => setNewTransactionCategory(cat.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,.06)", 
+                              color: newTransactionCategory === cat.id ? cat.color : "#4E4E72" 
+                            }}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Credit Payment Form */}
+                {newTransactionType === "credit_payment" && (
+                  <>
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pay From (Liquid Account)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts.filter(acc => acc.type !== "credit").map(acc => (
+                          <button 
+                            key={acc.id} 
+                            onClick={() => setNewTransactionFromAccount(acc.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionFromAccount === acc.id ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", 
+                              color: newTransactionFromAccount === acc.id ? "#6366F1" : "#4E4E72" 
+                            }}
+                          >
+                            {acc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Pay To (Credit Account)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {accounts.filter(acc => acc.type === "credit").map(acc => (
+                          <button 
+                            key={acc.id} 
+                            onClick={() => setNewTransactionToAccount(acc.id)} 
+                            className="py-2.5 rounded-xl text-xs font-bold"
+                            style={{ 
+                              backgroundColor: newTransactionToAccount === acc.id ? "rgba(99,102,241,.2)" : "rgba(255,255,255,.06)", 
+                              color: newTransactionToAccount === acc.id ? "#6366F1" : "#4E4E72" 
+                            }}
+                          >
+                            {acc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Date and Submit */}
+                <input 
+                  type="date" 
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
+                  value={newTransactionDate} 
+                  onChange={e => setNewTransactionDate(e.target.value)} 
+                />
+                <button 
+                  onClick={handleAddTransaction} 
+                  className="w-full py-4 rounded-2xl text-white font-bold text-sm" 
+                  style={{ backgroundColor: "#6366F1" }}
+                >
+                  Add Transaction
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Transaction Detail Modal with Itemization */}
+      {/* Transaction Detail Modal */}
       {showTransactionDetail && (
-        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => { setShowTransactionDetail(null); setNewTransactionItemDescription(""); setNewTransactionItemAmount(""); }}>
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowTransactionDetail(null)}>
           <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>
             <div className="flex items-center justify-between">
               <h3 className="text-white font-bold text-base">Transaction Details</h3>
-              <button onClick={() => { setShowTransactionDetail(null); setNewTransactionItemDescription(""); setNewTransactionItemAmount(""); }} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
+              <button onClick={() => setShowTransactionDetail(null)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
                 <X size={14} className="text-white" />
               </button>
             </div>
 
             {/* Transaction Info */}
-            <div className="p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-              <p className="text-white font-semibold text-sm mb-1">
+            <div className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+              <p className="text-white font-semibold text-sm mb-2">
                 {showTransactionDetail.type === "transfer" 
                   ? (() => {
                       const fromAcc = accounts.find(a => a.id === showTransactionDetail.fromAccountId);
@@ -1216,82 +1535,44 @@ export default function BudgetView({
                     })()
                   : (showTransactionDetail.description || "Transaction")}
               </p>
-              <p className="text-slate-400" style={{ fontSize: 11 }}>
-                {showTransactionDetail.date} · ${showTransactionDetail.amount.toFixed(2)}
-                {showTransactionDetail.type === "transfer" && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(20,184,166,.15)", color: "#14B8A6", fontSize: 8, fontWeight: 700 }}>
-                    Transfer
-                  </span>
-                )}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-slate-400" style={{ fontSize: 11 }}>
+                  {showTransactionDetail.date}
+                  {showTransactionDetail.type === "transfer" && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(20,184,166,.15)", color: "#14B8A6", fontSize: 8, fontWeight: 700 }}>
+                      Transfer
+                    </span>
+                  )}
+                </p>
+                <p className="text-white font-bold" style={{ fontSize: 16 }}>
+                  {showTransactionDetail.type === "expense" ? "-" : "+"}${showTransactionDetail.amount.toFixed(2)}
+                </p>
+              </div>
             </div>
 
-            {/* Receipt Items */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Receipt size={14} style={{ color: "#6366F1" }} />
-                <p className="text-stone-400" style={{ fontSize: 11, fontWeight: 600 }}>Receipt Items</p>
-              </div>
-              
-              {selectedTransactionItems.length > 0 && (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {selectedTransactionItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
-                      <div className="flex-1">
-                        <p className="text-white text-sm">{item.description}</p>
-                        <p className="text-slate-400" style={{ fontSize: 10 }}>{item.flowType}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold text-sm">${item.amount.toFixed(2)}</span>
-                        <button onClick={() => onDeleteTransactionItem(item.id)} className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,.15)" }}>
-                          <X size={10} style={{ color: "#EF4444" }} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Item */}
-              <div className="pt-3 border-t border-white/10">
-                <p className="text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 600 }}>Add Item</p>
-                <input 
-                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-2" 
-                  placeholder="Item description" 
-                  value={newTransactionItemDescription}
-                  onChange={e => setNewTransactionItemDescription(e.target.value)}
-                />
-                <input 
-                  type="number"
-                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80 mb-2" 
-                  placeholder="Amount ($)" 
-                  value={newTransactionItemAmount}
-                  onChange={e => setNewTransactionItemAmount(e.target.value)}
-                />
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  {(["spending", "saving", "investing", "income"] as FlowType[]).map(flow => (
-                    <button 
-                      key={flow} 
-                      onClick={() => setNewTransactionItemFlowType(flow)}
-                      className="py-2 rounded-xl text-xs font-bold capitalize"
-                      style={{ 
-                        backgroundColor: newTransactionItemFlowType === flow ? `${flowTypeColors[flow].bg}` : "rgba(255,255,255,.06)",
-                        color: newTransactionItemFlowType === flow ? flowTypeColors[flow].text : "#4E4E72"
-                      }}
-                    >
-                      {flow}
-                    </button>
-                  ))}
-                </div>
-                <button 
-                  onClick={handleAddTransactionItem}
-                  className="w-full py-3 rounded-2xl text-white font-bold text-sm"
-                  style={{ backgroundColor: "#6366F1" }}
-                  disabled={!newTransactionItemDescription || !newTransactionItemAmount}
-                >
-                  Add Item
-                </button>
-              </div>
+            {/* Edit and Delete Actions */}
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  setShowTransactionDetail(null);
+                  setEditingTransaction(showTransactionDetail);
+                }}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white"
+                style={{ backgroundColor: "#6366F1" }}
+              >
+                Edit Transaction
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirm("Are you sure you want to delete this transaction?")) {
+                    handleDeleteTransactionWithReversal(showTransactionDetail.id);
+                  }
+                }}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-sm"
+                style={{ backgroundColor: "rgba(239,68,68,.2)", color: "#EF4444" }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
@@ -1496,47 +1777,170 @@ export default function BudgetView({
         </div>
       )}
 
-      {/* Outlook Settings Modal */}
-      {showOutlookSettings && (
-        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setShowOutlookSettings(false)}>
+      {/* Account Detail Modal */}
+      {selectedAccount && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setSelectedAccount(null)}>
           <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-2">
               <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
             </div>
-            <h3 className="text-white font-bold text-base">Outlook Settings</h3>
-            
-            <div className="space-y-3">
-              <div>
-                <p className="text-stone-400 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>Liquid Growth Rate (%)</p>
-                <input 
-                  type="number"
-                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
-                  value={outlookLiquidRate}
-                  onChange={e => setOutlookLiquidRate(e.target.value)}
-                  step="0.1"
-                />
-                <p className="text-stone-500 mt-1" style={{ fontSize: 10 }}>Annual return for checking, savings, cash</p>
-              </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-base">Account Details</h3>
+              <button onClick={() => setSelectedAccount(null)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
+                <X size={14} className="text-white" />
+              </button>
+            </div>
 
-              <div>
-                <p className="text-stone-400 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>Investment Growth Rate (%)</p>
-                <input 
-                  type="number"
-                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80" 
-                  value={outlookInvestmentRate}
-                  onChange={e => setOutlookInvestmentRate(e.target.value)}
-                  step="0.1"
-                />
-                <p className="text-stone-500 mt-1" style={{ fontSize: 10 }}>Annual return for brokerage, retirement accounts</p>
+            {/* Account Info */}
+            <div className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-white font-bold text-lg">{selectedAccount.name}</p>
+                  <p className="text-slate-400" style={{ fontSize: 11, textTransform: "capitalize" }}>{selectedAccount.type}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-bold text-lg" style={{ color: selectedAccount.currentBalance >= 0 ? "#10B981" : "#EF4444" }}>
+                    ${selectedAccount.currentBalance.toFixed(2)}
+                  </p>
+                  {selectedAccount.type === "credit" && selectedAccount.creditLimit && (
+                    <p className="text-slate-400" style={{ fontSize: 10 }}>Limit: ${selectedAccount.creditLimit.toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Negative Balance Warning */}
+              {selectedAccount.type !== "credit" && selectedAccount.currentBalance < 0 && (
+                <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} style={{ color: "#EF4444" }} />
+                    <p className="font-bold" style={{ fontSize: 11, color: "#EF4444" }}>Warning: Account balance is under $0.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Account Transactions */}
+            <div>
+              <p className="text-stone-400 mb-2" style={{ fontSize: 11, fontWeight: 600 }}>Transactions</p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {transactions
+                  .filter(t => t.accountId === selectedAccount.id || t.fromAccountId === selectedAccount.id || t.toAccountId === selectedAccount.id)
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map(t => {
+                    const isExpense = t.type === "expense";
+                    const isTransfer = t.type === "transfer";
+                    const isCreditPayment = t.type === "credit_payment";
+                    
+                    return (
+                      <div key={t.id} className="p-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,.06)" }}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-medium">
+                              {isTransfer ? `Transfer` : isCreditPayment ? `Credit Payment` : t.description || (isExpense ? "Expense" : "Income")}
+                            </p>
+                            <p className="text-slate-400" style={{ fontSize: 10 }}>{t.date}</p>
+                          </div>
+                          <span className="font-bold text-sm" style={{ color: isExpense || isTransfer || isCreditPayment ? "#EF4444" : "#10B981" }}>
+                            {isExpense || isTransfer || isCreditPayment ? "-" : "+"}${t.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {transactions.filter(t => t.accountId === selectedAccount.id || t.fromAccountId === selectedAccount.id || t.toAccountId === selectedAccount.id).length === 0 && (
+                  <p className="text-slate-400 text-center py-4" style={{ fontSize: 12 }}>No transactions yet</p>
+                )}
               </div>
             </div>
 
-            <button onClick={handleSaveOutlookSettings} className="w-full py-4 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: "#6366F1" }}>
-              Save Settings
+            {/* Edit Account Button */}
+            <button 
+              onClick={() => {
+                const newName = prompt("Account name:", selectedAccount.name);
+                if (newName && newName.trim()) {
+                  onUpdateAccount({ ...selectedAccount, name: newName.trim() });
+                }
+              }}
+              className="w-full py-3.5 rounded-2xl font-bold text-sm"
+              style={{ backgroundColor: "rgba(99,102,241,.12)", color: "#818CF8", outline: "1px solid rgba(99,102,241,.25)" }}
+            >
+              Edit Account
             </button>
           </div>
         </div>
       )}
+
+      {/* Transaction Edit/Delete Modal */}
+      {editingTransaction && (
+        <div className="absolute inset-0 z-50 flex items-end" style={{ backgroundColor: "rgba(0,0,0,.5)", backdropFilter: "blur(10px)" }} onClick={() => setEditingTransaction(null)}>
+          <div className="w-full rounded-t-3xl p-5 space-y-4 glass-modal" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-2">
+              <div className="w-10 h-1 rounded-full" style={{ backgroundColor: "rgba(255,255,255,.2)" }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-base">Edit Transaction</h3>
+              <button onClick={() => setEditingTransaction(null)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,.1)" }}>
+                <X size={14} className="text-white" />
+              </button>
+            </div>
+
+            {/* Transaction Form */}
+            <div className="space-y-3">
+              <div>
+                <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Amount</p>
+                <input 
+                  type="number"
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80"
+                  value={editingTransaction.amount}
+                  onChange={e => setEditingTransaction({ ...editingTransaction, amount: Number(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Description</p>
+                <input 
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80"
+                  value={editingTransaction.description}
+                  onChange={e => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
+                />
+              </div>
+              <div>
+                <p className="text-stone-500 dark:text-stone-400 mb-2" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" }}>Date</p>
+                <input 
+                  type="date"
+                  className="w-full rounded-xl px-4 py-3 text-stone-900 text-sm outline-none border border-stone-200 bg-white/80"
+                  value={editingTransaction.date}
+                  onChange={e => setEditingTransaction({ ...editingTransaction, date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <button 
+                onClick={() => {
+                  handleUpdateTransaction(editingTransaction);
+                }}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white"
+                style={{ backgroundColor: "#6366F1" }}
+              >
+                Save Changes
+              </button>
+              <button 
+                onClick={() => {
+                  if (confirm("Are you sure you want to delete this transaction?")) {
+                    handleDeleteTransactionWithReversal(editingTransaction.id);
+                  }
+                }}
+                className="flex-1 py-3.5 rounded-2xl font-bold text-sm"
+                style={{ backgroundColor: "rgba(239,68,68,.2)", color: "#EF4444" }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
