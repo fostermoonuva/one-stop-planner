@@ -1,6 +1,6 @@
 // Vercel Cron Job: Send pending push notifications
 // Triggered every minute via vercel.json cron configuration
-// Query: SELECT * FROM alert_notifications WHERE alert_timestamp <= NOW() AND sent = false
+// Query: Only alerts within the 5-minute execution window where sent = false
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -21,11 +21,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Query pending alerts that need to be sent
+    // Query pending alerts that need to be sent - only those within the 5-minute execution window
+    const now = new Date().toISOString();
+    const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const { data: pendingAlerts, error: queryError } = await supabase
       .from('alert_notifications')
       .select('*')
-      .lte('alert_timestamp', new Date().toISOString())
+      .gte('alert_timestamp', now)
+      .lte('alert_timestamp', fiveMinutesFromNow)
       .eq('sent', false)
       .order('alert_timestamp', { ascending: true })
       .limit(100); // Process in batches
