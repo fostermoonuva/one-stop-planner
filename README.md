@@ -47,12 +47,12 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Entity | Main fields |
 |--------|-------------|
-| **Events** | Title, start/end date & time, optional repeat days, group, notes, **alert option + computed alert timestamp** |
+| **Events** | Title, start/end date & time, optional repeat days, group, notes, **multiple notification times + computed alert timestamps** |
 | **Tasks** | Title, due date/time, optional repeat, group, notes, done flag, **subtasks**, **alert option** |
 | **Subtasks** | Title, optional due date, done flag (nested under a task) |
 | **Meals** | Name, type (breakfast/lunch/dinner/snack), date/time, calories, protein/carbs/fat |
 | **Workouts** | Name, date, start/end time, exercises with sets (weight, reps, done) |
-| **Goals** | Title, days of week, amount + unit (times/minutes), group |
+| **Goals** | Title, days of week, amount + unit (times/minutes), group, **multiple notification times + computed alert timestamps** |
 | **Goal logs** | Per goal + date when completed |
 | **Groups** | Named color tags (School, Work, Personal, Fitness, Food, Wellness by default) |
 | **Active workout** | In-progress session (name, start time, live exercises/sets, optional custom date/time override) |
@@ -200,14 +200,17 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Feature | Description |
 |---------|-------------|
 | **Default alert rules** | Configurable per-category notification preferences in Account Settings (Account → Default Alert Rules) |
-| **Event alerts** | Dropdown selector: None, At time of event, 5/15/30 mins before, 1 hour before, 1 day before |
+| **Event alerts** | Multi-select chip list: At time of event, 15/30 minutes before, 1 hour before, 1 day before, Custom (minutes) — multiple triggers can be selected simultaneously |
 | **Task alerts** | Dropdown selector: None, At due time, 15 mins before, 1 hour before, 9:00 AM on due date |
+| **Goal alerts** | Multi-select chip list (same options as events) for scheduling multiple reminder triggers per goal |
 | **Goal daily reminders** | Time picker for daily check-in reminder (e.g., "Remind me daily at 8:00 PM") |
 | **Budget alerts** | Toggle switches for 80% category limit warnings and upcoming recurring bill reminders (1 day before) |
-| **Per-item overrides** | When creating/editing events or tasks, the "Remind Me" selector pre-fills from your default but can be overridden or set to "None" |
+| **Per-item overrides** | When creating/editing events or goals, the "Remind Me" multi-select pre-fills from your saved/default settings but can be toggled on/off per item |
 | **Scheduled push queue** | Alert notifications are stored in `alert_notifications` table with computed `alert_timestamp` |
-| **Background delivery** | Vercel Cron job runs every minute to query pending alerts (`alert_timestamp <= NOW() AND sent = false`) and sends Web Push notifications to active subscriptions |
-| **Scheduled dispatcher API** | `api/send-scheduled-notifications.ts` — on-demand serverless route that queries all active subscriptions (`user_push_subscriptions` where `enabled = true`) and dispatches a generic "upcoming scheduled items due" Web Push payload via `web-push`. Expired endpoints (HTTP 404/410) are automatically deleted. Returns `{ success, notificationsSent, timestamp }` |
+| **Background delivery** | Vercel Cron job runs every 5 minutes to query due alerts (`sent = false` AND `alert_timestamp` within the current 1-minute window) and sends Web Push notifications to active subscriptions |
+| **Context-aware notification payloads** | Push titles/bodies are built per entity type: Events → `"Upcoming Event: {title}"` / `"Starts at {startTime} ({alertTimingText})"`, Goals → `"Goal Reminder: {title}"` / `"Time to check in on your goal!"`, Tasks → `"Task Due: {title}"` / `"Due at {dueTime}"` |
+| **Duplicate prevention** | Alerts are only selected within a narrow `[now, now + 1 minute]` window, and each alert is immediately marked `sent = true` after successful dispatch so subsequent cron pings ignore it |
+| **Scheduled dispatcher API** | `api/send-scheduled-notifications.ts` — on-demand serverless route that queries due, un-sent alerts from `alert_notifications` and dispatches context-aware Web Push payloads via `web-push` to the user's active subscriptions (`user_push_subscriptions` where `enabled = true`). Expired endpoints (HTTP 404/410) are automatically deleted. Returns `{ success, notificationsSent, timestamp }` |
 | **Deep linking** | Push notifications include deep-link destination URLs to open the relevant item in the app |
 | **Push subscription management** | Users can enable/disable push notifications in Account Settings with a toggle switch. Tapping the toggle requests browser permission (`Notification.requestPermission()`), creates a Push API subscription via Service Worker, and saves the subscription endpoint + keys to the `user_push_subscriptions` table in Supabase |
 | **iOS synchronous gesture handling** | On iOS, `Notification.requestPermission()` and `pushManager.subscribe()` execute synchronously inside the click handler before any async backend queries, so the toggle works from the Home Screen shortcut. The service worker (`/sw.js`) is registered at app load and cached for immediate use |
@@ -332,6 +335,8 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
+- **Multiple Scheduled Notification Times for Events & Goals** — Events and Goals now support multiple alert triggers per item. The single "Remind Me" dropdown was replaced with a multi-select chip list (At time of event, 15/30 minutes before, 1 hour before, 1 day before, Custom minutes). Each selected option stores a `notificationTimes: string[]` array and a computed `alertTimestamps: string[]` array on the item so the backend cron handler can process each trigger independently. Edit mode pre-populates the checkboxes with the item's saved notification times, and legacy single `alertOption` values migrate automatically to arrays on load.
+- **Context-Aware Notification Titles & Duplicate Prevention** — Push notifications now display entity-specific titles and bodies: Events show `"Upcoming Event: {title}"` with `"Starts at {startTime} ({alertTimingText})"`, Goals show `"Goal Reminder: {title}"` with `"Time to check in on your goal!"`, and Tasks show `"Task Due: {title}"` with `"Due at {dueTime}"`. Both `api/send-scheduled-notifications.ts` and the Vercel cron handler (`api/cron/send-alerts.js`) now query due alerts within a narrow `[now, now + 1 minute]` window, mark alerts as `sent = true` immediately after dispatch, and the cron schedule runs every 5 minutes (`*/5 * * * *`) so alerts fire exactly once without repeating on subsequent pings.
 - **Scheduled Notification Dispatcher API** — added `api/send-scheduled-notifications.ts`, a serverless route that queries active Web Push subscriptions from the `user_push_subscriptions` table and dispatches a scheduled "upcoming items due" notification payload to each endpoint using `web-push`. Expired subscriptions (HTTP 404/410) are cleaned up automatically. Requires server-side env vars `SUPABASE_SERVICE_ROLE_KEY` and `VAPID_PRIVATE_KEY` (documented in `.env.example`). New dependencies: `web-push`, `@types/web-push`, and `@vercel/node`.
 - **Diagnostic Push Failure Toasts** — push notification failures now surface the exact thrown exception details in the Account Settings error banner. The `handlePushToggle` catch block in `AccountMenu.tsx` builds a "Push Error: …" message from the thrown value (string, `error.message`, or serialized object). The subscription helpers in `pushNotifications.ts` wrap failures with the specific operation name (e.g., `subscribeToPush failed:`, `savePushSubscription failed:`, `removePushSubscription failed:`, `sendTestNotification failed:`) plus the underlying error detail, so the root cause is visible in the UI instead of a generic fallback string.
 - **iOS Push Notification Subscription Fix** — fixed the "Granted but Not Subscribed" toggle bug on iOS PWAs. `Notification.requestPermission()` and `pushManager.subscribe()` now execute synchronously inside the click handler before any async backend queries, so tapping the toggle from the iOS Home Screen shortcut registers a valid Web Push subscription. The service worker (`/sw.js`) is registered at app load and cached for immediate use. The VAPID public key is read from `VITE_VAPID_PUBLIC_KEY` with an explicit "Configuration Error: VAPID Public Key missing" toast if absent. Successful subscriptions show a "Notifications enabled & subscribed!" toast and save the endpoint + keys to `user_push_subscriptions` in Supabase. Subscription failures surface descriptive error toasts instead of failing silently.

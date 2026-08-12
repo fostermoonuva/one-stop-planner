@@ -24,6 +24,13 @@ export interface PlannerDataPayload {
 export type EventAlertOption = "none" | "at_time" | "5min" | "15min" | "30min" | "1hour" | "1day";
 export type TaskAlertOption = "none" | "at_due" | "15min" | "1hour" | "9am_due_date";
 
+/**
+ * Standard notification timing options for events & goals.
+ * Stored in a `notificationTimes: string[]` array on each item so multiple
+ * triggers can be scheduled per item. Custom entries are stored as `custom:<minutes>`.
+ */
+export type NotificationTiming = "at_time" | "15min" | "30min" | "1hour" | "1day" | "custom";
+
 export interface NotificationSettings {
   eventDefaultAlert: EventAlertOption;
   taskDefaultAlert: TaskAlertOption;
