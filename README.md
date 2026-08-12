@@ -47,7 +47,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Entity | Main fields |
 |--------|-------------|
-| **Events** | Title, start/end date & time, optional repeat days, group, notes, **alert option + computed alert timestamp** — created events are also **inserted directly into the remote Supabase `events` table** |
+| **Events** | Title, start/end date & time, optional repeat days, group, notes, **alert option + computed alert timestamp** |
 | **Tasks** | Title, due date/time, optional repeat, group, notes, done flag, **subtasks**, **alert option** |
 | **Subtasks** | Title, optional due date, done flag (nested under a task) |
 | **Meals** | Name, type (breakfast/lunch/dinner/snack), date/time, calories, protein/carbs/fat |
@@ -173,9 +173,8 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 
 | Feature | Description |
 |---------|-------------|
-| New event | Name, start date, start/end time, optional repeat days, end/until date, group, notes, remind-me alert option |
+| New event | Name, start date, start/end time, optional repeat days, end/until date, group, notes |
 | Detail | View dates, times, repeats, notes; edit or delete |
-| Direct Supabase insert | Creating an event also writes it directly to the remote `events` table with a computed `alert_timestamp` (UTC ISO string based on event date/time minus the alert lead time, e.g. `2026-08-12T14:00:00.000Z` for "At time of event", `13:45` for "15 minutes before") and `alert_sent = false` so the scheduled notification dispatcher can pick it up |
 
 ### Tasks & subtasks (add / detail)
 
@@ -201,7 +200,7 @@ A mobile-first unified life planner: calendar, tasks (with subtasks), fitness (w
 | Feature | Description |
 |---------|-------------|
 | **Default alert rules** | Configurable per-category notification preferences in Account Settings (Account → Default Alert Rules) |
-| **Event alerts** | Dropdown selector: None, At time of event, 5/15/30 mins before, 1 hour before, 1 day before — the chosen lead time is converted to a `TIMESTAMPTZ` `alert_timestamp` and saved with the event row in the `events` table on creation |
+| **Event alerts** | Dropdown selector: None, At time of event, 5/15/30 mins before, 1 hour before, 1 day before |
 | **Task alerts** | Dropdown selector: None, At due time, 15 mins before, 1 hour before, 9:00 AM on due date |
 | **Goal daily reminders** | Time picker for daily check-in reminder (e.g., "Remind me daily at 8:00 PM") |
 | **Budget alerts** | Toggle switches for 80% category limit warnings and upcoming recurring bill reminders (1 day before) |
@@ -333,7 +332,6 @@ A project rule (`.cursor/rules/update-readme.mdc`) reminds the agent to refresh 
 
 ### Last major feature documented
 
-- **Direct Supabase Event Insert with Calculated `alert_timestamp`** — `handleAddEvent` in `src/app/App.tsx` now inserts events directly into the remote Supabase `events` table (user_id, title, description, date, start_time, end_time, alert_timestamp, alert_sent = false, created_at). The `alert_timestamp` is computed from the event's date/time minus the selected "Remind Me" lead time (At time of event → event start; 5/15/30 min, 1 hour, 1 day before → start minus lead) and stored as an ISO `TIMESTAMPTZ` string so the scheduled notification dispatcher can query due alerts.
 - **Scheduled Notification Dispatcher API** — added `api/send-scheduled-notifications.ts`, a serverless route that queries active Web Push subscriptions from the `user_push_subscriptions` table and dispatches a scheduled "upcoming items due" notification payload to each endpoint using `web-push`. Expired subscriptions (HTTP 404/410) are cleaned up automatically. Requires server-side env vars `SUPABASE_SERVICE_ROLE_KEY` and `VAPID_PRIVATE_KEY` (documented in `.env.example`). New dependencies: `web-push`, `@types/web-push`, and `@vercel/node`.
 - **Diagnostic Push Failure Toasts** — push notification failures now surface the exact thrown exception details in the Account Settings error banner. The `handlePushToggle` catch block in `AccountMenu.tsx` builds a "Push Error: …" message from the thrown value (string, `error.message`, or serialized object). The subscription helpers in `pushNotifications.ts` wrap failures with the specific operation name (e.g., `subscribeToPush failed:`, `savePushSubscription failed:`, `removePushSubscription failed:`, `sendTestNotification failed:`) plus the underlying error detail, so the root cause is visible in the UI instead of a generic fallback string.
 - **iOS Push Notification Subscription Fix** — fixed the "Granted but Not Subscribed" toggle bug on iOS PWAs. `Notification.requestPermission()` and `pushManager.subscribe()` now execute synchronously inside the click handler before any async backend queries, so tapping the toggle from the iOS Home Screen shortcut registers a valid Web Push subscription. The service worker (`/sw.js`) is registered at app load and cached for immediate use. The VAPID public key is read from `VITE_VAPID_PUBLIC_KEY` with an explicit "Configuration Error: VAPID Public Key missing" toast if absent. Successful subscriptions show a "Notifications enabled & subscribed!" toast and save the endpoint + keys to `user_push_subscriptions` in Supabase. Subscription failures surface descriptive error toasts instead of failing silently.

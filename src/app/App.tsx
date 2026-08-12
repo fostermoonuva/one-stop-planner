@@ -32,7 +32,6 @@ import {
   loadNotificationSettings,
   saveNotificationSettings,
 } from "../lib/plannerStorage";
-import { supabase } from "../lib/supabase";
 import type { EventAlertOption, TaskAlertOption } from "../lib/plannerStorage";
 
 export interface AppProps {
@@ -2207,40 +2206,10 @@ export default function App({ userId, username, onSignOut }: AppProps) {
   const deleteMeal    = (id: string) => setCalMeals(p => p.filter(x => x.id !== id));
   const deleteWorkout = (id: string) => setCalWorkouts(p => p.filter(x => x.id !== id));
 
-  const handleAddEvent = async (e: CalEvent) => {
+  const handleAddEvent = (e: CalEvent) => {
     setCalEvents(p => [...p, e]);
     setScreen("home");
     setTodayTab("all");
-
-    // Calculate alert timestamp for the event
-    const alertTimestamp = computeEventAlertTimestamp(e.alertOption || "none", e.startDate, e.startTime) ?? null;
-
-    const eventPayload = {
-      user_id: userId,
-      title: e.title,
-      description: e.notes || '',
-      date: e.startDate,
-      start_time: e.startTime,
-      end_time: e.endTime || null,
-      alert_timestamp: alertTimestamp,
-      alert_sent: false,
-      created_at: new Date().toISOString()
-    };
-
-    // Insert directly into Supabase
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('events')
-        .insert([eventPayload])
-        .select();
-
-      if (error) {
-        console.error("Failed to insert event into Supabase:", error.message);
-        alert("Database Save Error: " + error.message);
-      } else {
-        console.log("Event saved successfully to Supabase:", data);
-      }
-    }
   };
   const handleAddTask = (t: CalTask) => {
     setCalTasks(p => [...p, t]);
