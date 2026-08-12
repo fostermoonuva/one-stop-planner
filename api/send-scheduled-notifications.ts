@@ -33,28 +33,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Fetch due events that haven't been notified yet
-    const { data: events, error: eventError } = await supabase
+    const { data: dueEvents, error: eventError } = await supabase
       .from('events')
       .select('*')
-      .lte('alert_timestamp', now)
+      .or(`alert_timestamp.lte.${now},alertTimestamp.lte.${now}`)
       .or('alert_sent.is.null,alert_sent.eq.false');
 
     if (eventError) throw new Error("Database error: " + eventError.message);
+
+    // 3. Fetch due goals that haven't been notified yet
+    const { data: dueGoals, error: goalError } = await supabase
+      .from('goals')
+      .select('*')
+      .or(`alert_timestamp.lte.${now},alertTimestamp.lte.${now}`)
+      .or('alert_sent.is.null,alert_sent.eq.false');
+
+    if (goalError) throw new Error("Database error: " + goalError.message);
+
+    // 4. Fetch due tasks that haven't been notified yet
+    const { data: dueTasks, error: taskError } = await supabase
+      .from('tasks')
+      .select('*')
+      .or(`alert_timestamp.lte.${now},alertTimestamp.lte.${now}`)
+      .or('alert_sent.is.null,alert_sent.eq.false');
+
+    if (taskError) throw new Error("Database error: " + taskError.message);
 
     let sentCount = 0;
     const dueItems: { title: string; body: string }[] = [];
 
     // Format events into payloads
-    if (events && events.length > 0) {
-      for (const item of events) {
+    if (dueEvents && dueEvents.length > 0) {
+      for (const item of dueEvents) {
         dueItems.push({
           title: item.title ? `Event: ${item.title}` : 'Upcoming Event',
-          body: item.start_time || item.startTime ? `Starts at ${item.start_time || item.startTime}` : 'Scheduled event reminder'
+          body: `Starts at ${item.start_time || item.startTime || 'scheduled time'}`
         });
       }
     }
 
-    // 3. Dispatch to registered devices
+    // Format goals into payloads
+    if (dueGoals && dueGoals.length > 0) {
+      for (const item of dueGoals) {
+        dueItems.push({
+          title: item.title ? `Goal Reminder: ${item.title}` : 'Goal Reminder',
+          body: 'Time to check in on your goal!'
+        });
+      }
+    }
+
+    // Format tasks into payloads
+    if (dueTasks && dueTasks.length > 0) {
+      for (const item of dueTasks) {
+        dueItems.push({
+          title: item.title ? `Task Due: ${item.title}` : 'Task Due',
+          body: `Due at ${item.due_time || item.dueTime || 'scheduled time'}`
+        });
+      }
+    }
+
+    // 5. Dispatch to registered devices
     for (const item of dueItems) {
       const payload = JSON.stringify({
         title: item.title,
@@ -79,9 +117,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 4. Mark due events as notified to prevent re-sending on subsequent cron runs
-    if (events && events.length > 0) {
-      const eventIds = events.map((e: any) => e.id);
+    // 6. Mark due events as notified to prevent re-sending on subsequent cron runs
+    if (dueEvents && dueEvents.length > 0) {
+      const eventIds = dueEvents.map((e: any) => e.id);
       const { error: updateError } = await supabase
         .from('events')
         .update({ alert_sent: true })
@@ -89,6 +127,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (updateError) {
         console.error("Failed to mark events as sent:", updateError.message);
+      }
+    }
+
+    // 7. Mark due goals as notified to prevent re-sending on subsequent cron runs
+    if (dueGoals && dueGoals.length > 0) {
+      const goalIds = dueGoals.map((g: any) => g.id);
+      const { error: updateError } = await supabase
+        .from('goals')
+        .update({ alert_sent: true })
+        .in('id', goalIds);
+
+      if (updateError) {
+        console.error("Failed to mark goals as sent:", updateError.message);
+      }
+    }
+
+    // 8. Mark due tasks as notified to prevent re-sending on subsequent cron runs
+    if (dueTasks && dueTasks.length > 0) {
+      const taskIds = dueTasks.map((t: any) => t.id);
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ alert_sent: true })
+        .in('id', taskIds);
+
+      if (updateError) {
+        console.error("Failed to mark tasks as sent:", updateError.message);
       }
     }
 
