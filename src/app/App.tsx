@@ -50,14 +50,14 @@ export type GoalUnit  = "minutes" | "times";
 
 export interface Subtask    { id: string; title: string; dueDate: string; done: boolean; }
 export interface Group      { id: string; name: string; color: string; }
-export interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; notificationTimes: string[]; alertTimestamps: string[]; }
+export interface CalEvent   { id: string; title: string; startDate: string; endDate: string; startTime: string; endTime: string; groupId: string; notes: string; repeatDays: number[]; alertOption?: EventAlertOption; alertTimestamp?: string; }
 export interface CalTask    { id: string; title: string; dueDate: string; dueTime: string; groupId: string; notes: string; done: boolean; repeatDays: number[]; subtasks: Subtask[]; alertOption?: TaskAlertOption; }
 export interface CalMeal    { id: string; name: string; description: string; mealType: MealType; date: string; time: string; calories: number; protein: number; carbs: number; fat: number; }
 export type WSetType = "normal" | "warmup" | "dropset" | "failure";
 export interface WSet       { wt: number; reps: number; done: boolean; type?: WSetType; }
 export interface WExercise  { id: string; name: string; sets: WSet[]; }
 export interface CalWorkout { id: string; name: string; date: string; startTime: string; endTime: string; exercises: WExercise[]; }
-export interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; notificationTimes: string[]; alertTimestamps: string[]; }
+export interface CalGoal    { id: string; title: string; days: number[]; amount: number; unit: GoalUnit; groupId: string; }
 export interface GoalLog    { id: string; goalId: string; date: string; }
 export interface ActiveWO   { name: string; startedAt: string; exercises: WExercise[]; customDate?: string; customStartTime?: string; }
 export interface TLItem     { id: string; title: string; startMin: number; endMin: number; type: string; color: string; subtitle?: string; done?: boolean; subtaskDone?: number; subtaskTotal?: number; }
@@ -130,77 +130,21 @@ export const upcomingLabel = (d: Date) => {
   return `${MF[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
 };
 
-/** Standard notification timing options for events & goals (multi-select). */
-export const NOTIFICATION_TIMING_OPTIONS: { value: string; label: string }[] = [
-  { value: "at_time", label: "At time of event" },
-  { value: "15min",   label: "15 minutes before" },
-  { value: "30min",   label: "30 minutes before" },
-  { value: "1hour",   label: "1 hour before" },
-  { value: "1day",    label: "1 day before" },
-  { value: "custom",  label: "Custom" },
-];
-
-/** Human-readable label for a stored notification timing value. */
-export function notificationTimingLabel(value: string): string {
-  if (value.startsWith("custom:")) {
-    const mins = parseInt(value.split(":")[1], 10);
-    if (!isNaN(mins)) {
-      if (mins < 60) return `${mins} min before`;
-      if (mins % 60 === 0) return `${mins / 60} hour${mins / 60 > 1 ? "s" : ""} before`;
-      return `${Math.floor(mins / 60)}h ${mins % 60}m before`;
-    }
-    return "Custom";
-  }
-  return NOTIFICATION_TIMING_OPTIONS.find(o => o.value === value)?.label ?? value;
-}
-
-/** Compute the alert timestamp for a single notification timing value. */
-export function computeNotificationTimestamp(timing: string, dateStr: string, timeStr: string): string | undefined {
+export function computeEventAlertTimestamp(option: EventAlertOption, dateStr: string, timeStr: string): string | undefined {
+  if (option === "none") return undefined;
+  
   const base = new Date(`${dateStr}T${timeStr || "00:00"}:00`);
-  let offset = 0;
-  if (timing === "at_time") offset = 0;
-  else if (timing === "15min") offset = -15;
-  else if (timing === "30min") offset = -30;
-  else if (timing === "1hour") offset = -60;
-  else if (timing === "1day") offset = -1440;
-  else if (timing.startsWith("custom:")) {
-    const mins = parseInt(timing.split(":")[1], 10);
-    if (isNaN(mins)) return undefined;
-    offset = -mins;
-  } else {
-    return undefined;
-  }
+  const offset = {
+    "at_time": 0,
+    "5min": -5,
+    "15min": -15,
+    "30min": -30,
+    "1hour": -60,
+    "1day": -1440,
+  }[option] || 0;
+  
   base.setMinutes(base.getMinutes() + offset);
   return base.toISOString();
-}
-
-/** Compute alert timestamps for an array of notification timings. */
-export function computeNotificationTimestamps(timings: string[], dateStr: string, timeStr: string): string[] {
-  return timings
-    .map(t => computeNotificationTimestamp(t, dateStr, timeStr))
-    .filter((t): t is string => !!t);
-}
-
-/** Migrate a legacy single alert option to the new notificationTimes array. */
-export function migrateNotificationTimes(legacy?: { alertOption?: string; alertTimestamp?: string }): { notificationTimes: string[]; alertTimestamps: string[] } {
-  if (legacy?.alertOption && legacy.alertOption !== "none") {
-    const map: Record<string, string> = {
-      "at_time": "at_time",
-      "5min": "custom:5",
-      "15min": "15min",
-      "30min": "30min",
-      "1hour": "1hour",
-      "1day": "1day",
-    };
-    const timing = map[legacy.alertOption];
-    if (timing) {
-      return {
-        notificationTimes: [timing],
-        alertTimestamps: legacy.alertTimestamp ? [legacy.alertTimestamp] : [],
-      };
-    }
-  }
-  return { notificationTimes: [], alertTimestamps: [] };
 }
 
 /**
@@ -295,77 +239,6 @@ function GroupPicker({ groups, selected, onChange }: { groups: Group[]; selected
           {g.name}
         </button>
       ))}
-    </div>
-  );
-}
-
-/**
- * Multi-select notification timing picker (chip list).
- * Toggling a chip ON adds it to `selected`; toggling OFF removes it.
- * The "Custom" chip reveals a minutes input that stores `custom:<minutes>`.
- */
-function NotificationTimesPicker({ selected, onChange, accentColor = "#6366F1" }: {
-  selected: string[];
-  onChange: (times: string[]) => void;
-  accentColor?: string;
-}) {
-  const [customMins, setCustomMins] = useState("");
-
-  const toggle = (value: string) => {
-    if (selected.includes(value)) {
-      onChange(selected.filter(v => v !== value));
-    } else {
-      onChange([...selected, value]);
-    }
-  };
-
-  const addCustom = () => {
-    const mins = parseInt(customMins, 10);
-    if (isNaN(mins) || mins <= 0) return;
-    const value = `custom:${mins}`;
-    if (!selected.includes(value)) onChange([...selected, value]);
-    setCustomMins("");
-  };
-
-  const hasCustom = selected.some(v => v.startsWith("custom:"));
-
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {NOTIFICATION_TIMING_OPTIONS.map(opt => {
-          const isOn = selected.includes(opt.value);
-          return (
-            <button key={opt.value} type="button" onClick={() => toggle(opt.value)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150"
-              style={{
-                backgroundColor: isOn ? `${accentColor}20` : "rgba(255,255,255,.5)",
-                color: isOn ? accentColor : "#78716C",
-                outline: isOn ? `1px solid ${accentColor}50` : "1px solid transparent",
-              }}>
-              {isOn ? "✓ " : ""}{opt.label}
-            </button>
-          );
-        })}
-        {hasCustom && (
-          <span className="px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ backgroundColor: `${accentColor}20`, color: accentColor, outline: `1px solid ${accentColor}50` }}>
-            ✓ {selected.filter(v => v.startsWith("custom:")).map(notificationTimingLabel).join(", ")}
-          </span>
-        )}
-      </div>
-      {selected.includes("custom") && (
-        <div className="flex gap-2 mt-2">
-          <input type="number" min="1" placeholder="Minutes before" value={customMins}
-            onChange={e => setCustomMins(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") addCustom(); }}
-            className={inputCls} style={{ ...inputSty, fontSize: 12 }} />
-          <button type="button" onClick={addCustom}
-            className="px-4 py-2 rounded-xl font-bold text-xs text-white flex-shrink-0"
-            style={{ backgroundColor: customMins.trim() ? accentColor : "rgba(99,102,241,.35)", color: customMins.trim() ? "#fff" : "#6366F1" }}>
-            Add
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1349,19 +1222,11 @@ function EventModal({ groups, selectedDate, onAdd, onClose, defaultEventAlert }:
   const [repeatDays, setRepeatDays] = useState<number[]>([]);
   const [groupId, setGroupId] = useState("");
   const [notes, setNotes] = useState("");
-  const [notificationTimes, setNotificationTimes] = useState<string[]>(() => {
-    const d = defaultEventAlert && defaultEventAlert !== "none" ? defaultEventAlert : "15min";
-    const map: Record<string, string> = { "at_time": "at_time", "5min": "custom:5", "15min": "15min", "30min": "30min", "1hour": "1hour", "1day": "1day" };
-    return map[d] ? [map[d]] : [];
-  });
+  const [alertOption, setAlertOption] = useState<EventAlertOption>(defaultEventAlert || "15min");
 
   const submit = () => {
     if (!title.trim()) return;
-    onAdd({
-      id: uid(), title: title.trim(), startDate, endDate, startTime, endTime, groupId, notes, repeatDays,
-      notificationTimes,
-      alertTimestamps: computeNotificationTimestamps(notificationTimes, startDate, startTime),
-    });
+    onAdd({ id: uid(), title: title.trim(), startDate, endDate, startTime, endTime, groupId, notes, repeatDays, alertOption, alertTimestamp: computeEventAlertTimestamp(alertOption, startDate, startTime) });
     onClose();
   };
 
@@ -1376,12 +1241,16 @@ function EventModal({ groups, selectedDate, onAdd, onClose, defaultEventAlert }:
             <input type="time" className={inputCls} style={inputSty} value={f.v} onChange={e => f.s(e.target.value)} /></div>
         ))}
       </div>
-      <div>
-        <p className="mb-1.5" style={labelSty}>Remind Me (select one or more)</p>
-        <NotificationTimesPicker selected={notificationTimes} onChange={setNotificationTimes} />
-        {notificationTimes.length === 0 && (
-          <p className="mt-1.5" style={{ fontSize: 10, color: "#78716C" }}>No reminders will be scheduled.</p>
-        )}
+      <div><p className="mb-1.5" style={labelSty}>Remind Me</p>
+        <select value={alertOption} onChange={e => setAlertOption(e.target.value as EventAlertOption)} className={inputCls} style={inputSty}>
+          <option value="none">None</option>
+          <option value="at_time">At time of event</option>
+          <option value="5min">5 mins before</option>
+          <option value="15min">15 mins before</option>
+          <option value="30min">30 mins before</option>
+          <option value="1hour">1 hour before</option>
+          <option value="1day">1 day before</option>
+        </select>
       </div>
       <div><p className="mb-1.5" style={labelSty}>Repeat on</p>
         <DaySelector selected={repeatDays} onChange={days => {
@@ -1516,15 +1385,10 @@ function GoalModal({ groups, onAdd, onClose }: { groups: Group[]; onAdd: (g: Cal
   const [amount, setAmount] = useState("1");
   const [unit, setUnit] = useState<GoalUnit>("times");
   const [groupId, setGroupId] = useState("");
-  const [notificationTimes, setNotificationTimes] = useState<string[]>([]);
 
   const submit = () => {
     if (!title.trim() || !days.length) return;
-    onAdd({
-      id: uid(), title: title.trim(), days, amount: Number(amount) || 1, unit, groupId,
-      notificationTimes,
-      alertTimestamps: computeNotificationTimestamps(notificationTimes, dKey(new Date()), nowHHMM()),
-    });
+    onAdd({ id: uid(), title: title.trim(), days, amount: Number(amount) || 1, unit, groupId });
     onClose();
   };
 
@@ -1545,13 +1409,6 @@ function GoalModal({ groups, onAdd, onClose }: { groups: Group[]; onAdd: (g: Cal
             ))}
           </div>
         </div>
-      </div>
-      <div>
-        <p className="mb-1.5" style={labelSty}>Remind Me (select one or more)</p>
-        <NotificationTimesPicker selected={notificationTimes} onChange={setNotificationTimes} accentColor="#F472B6" />
-        {notificationTimes.length === 0 && (
-          <p className="mt-1.5" style={{ fontSize: 10, color: "#78716C" }}>No reminders will be scheduled.</p>
-        )}
       </div>
       <div><p className="mb-1.5" style={labelSty}>Group (optional)</p><GroupPicker groups={groups} selected={groupId} onChange={setGroupId} /></div>
       <button onClick={submit} className="w-full py-4 rounded-2xl font-bold text-sm"
@@ -1641,7 +1498,6 @@ function EventEditForm({ event, groups, onSave, onCancel }: { event: CalEvent; g
   const [repeatDays, setRepeatDays] = useState(event.repeatDays);
   const [groupId, setGroupId] = useState(event.groupId);
   const [notes, setNotes] = useState(event.notes);
-  const [notificationTimes, setNotificationTimes] = useState<string[]>(event.notificationTimes || []);
   return (
     <div className="space-y-4 pt-2">
       <input className={inputCls} style={inputSty} value={title} onChange={e => setTitle(e.target.value)} />
@@ -1650,13 +1506,6 @@ function EventEditForm({ event, groups, onSave, onCancel }: { event: CalEvent; g
       <div className="grid grid-cols-2 gap-3">
         <div><p className="mb-1.5" style={labelSty}>Start Time</p><input type="time" className={inputCls} style={inputSty} value={startTime} onChange={e => setStartTime(e.target.value)} /></div>
         <div><p className="mb-1.5" style={labelSty}>End Time</p><input type="time" className={inputCls} style={inputSty} value={endTime} onChange={e => setEndTime(e.target.value)} /></div>
-      </div>
-      <div>
-        <p className="mb-1.5" style={labelSty}>Remind Me (select one or more)</p>
-        <NotificationTimesPicker selected={notificationTimes} onChange={setNotificationTimes} />
-        {notificationTimes.length === 0 && (
-          <p className="mt-1.5" style={{ fontSize: 10, color: "#78716C" }}>No reminders will be scheduled.</p>
-        )}
       </div>
       <div><p className="mb-1.5" style={labelSty}>Repeat on</p>
         <DaySelector selected={repeatDays} onChange={days => {
@@ -1676,7 +1525,7 @@ function EventEditForm({ event, groups, onSave, onCancel }: { event: CalEvent; g
       <div><p className="mb-1.5" style={labelSty}>Notes</p>
         <textarea className={inputCls} style={{ ...inputSty, resize: "none" } as React.CSSProperties} rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
       <div className="flex gap-2">
-        <button onClick={() => onSave({ ...event, title, startDate, endDate, startTime, endTime, repeatDays, groupId, notes, notificationTimes, alertTimestamps: computeNotificationTimestamps(notificationTimes, startDate, startTime) })}
+        <button onClick={() => onSave({ ...event, title, startDate, endDate, startTime, endTime, repeatDays, groupId, notes })}
           className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white" style={{ backgroundColor: "#6366F1" }}>Save</button>
         <button onClick={onCancel} className="flex-1 py-3.5 rounded-2xl font-bold text-sm"
           style={{ backgroundColor: "rgba(255,255,255,.07)", color: "#7878A4" }}>Cancel</button>
@@ -1723,7 +1572,6 @@ function GoalEditForm({ goal, groups, onSave, onCancel }: { goal: CalGoal; group
   const [amount, setAmount] = useState(String(goal.amount));
   const [unit, setUnit] = useState<GoalUnit>(goal.unit);
   const [groupId, setGroupId] = useState(goal.groupId);
-  const [notificationTimes, setNotificationTimes] = useState<string[]>(goal.notificationTimes || []);
   return (
     <div className="space-y-4 pt-2">
       <input className={inputCls} style={inputSty} value={title} onChange={e => setTitle(e.target.value)} />
@@ -1742,16 +1590,9 @@ function GoalEditForm({ goal, groups, onSave, onCancel }: { goal: CalGoal; group
           </div>
         </div>
       </div>
-      <div>
-        <p className="mb-1.5" style={labelSty}>Remind Me (select one or more)</p>
-        <NotificationTimesPicker selected={notificationTimes} onChange={setNotificationTimes} accentColor="#F472B6" />
-        {notificationTimes.length === 0 && (
-          <p className="mt-1.5" style={{ fontSize: 10, color: "#78716C" }}>No reminders will be scheduled.</p>
-        )}
-      </div>
       <div><p className="mb-1.5" style={labelSty}>Group</p><GroupPicker groups={groups} selected={groupId} onChange={setGroupId} /></div>
       <div className="flex gap-2">
-        <button onClick={() => onSave({ ...goal, title, days, amount: Number(amount) || 1, unit, groupId, notificationTimes, alertTimestamps: computeNotificationTimestamps(notificationTimes, dKey(new Date()), nowHHMM()) })}
+        <button onClick={() => onSave({ ...goal, title, days, amount: Number(amount) || 1, unit, groupId })}
           className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-white" style={{ backgroundColor: "#6366F1" }}>Save</button>
         <button onClick={onCancel} className="flex-1 py-3.5 rounded-2xl font-bold text-sm"
           style={{ backgroundColor: "rgba(255,255,255,.07)", color: "#7878A4" }}>Cancel</button>
@@ -1907,9 +1748,6 @@ function DetailModal({
                       : event.startDate === event.endDate ? fmtDateStr(event.startDate) : `${fmtDateStr(event.startDate)} → ${fmtDateStr(event.endDate)}`}
                   </InfoRow>
                   {event.startTime && <InfoRow icon="🕐" label="Time">{m2d(t2m(event.startTime))} – {m2d(t2m(event.endTime))}</InfoRow>}
-                  {event.notificationTimes && event.notificationTimes.length > 0 && (
-                    <InfoRow icon="🔔" label="Reminders">{event.notificationTimes.map(notificationTimingLabel).join(", ")}</InfoRow>
-                  )}
                   {event.repeatDays.length > 0 && <InfoRow icon="🔁" label="Repeats">{event.repeatDays.map(d => DS[d]).join(", ")}{!event.endDate ? " (no end)" : ""}</InfoRow>}
                   {event.notes && <InfoRow icon="📝" label="Notes">{event.notes}</InfoRow>}
                 </>
@@ -1947,9 +1785,6 @@ function DetailModal({
                   {goal.groupId && <div><span className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ backgroundColor: `${color}20`, color }}>{gName(groups, goal.groupId)}</span></div>}
                   <InfoRow icon="📊" label="Target">{goal.amount} {goal.unit}</InfoRow>
                   <InfoRow icon="📅" label="Schedule">{goal.days.map(d => DF[d]).join(", ")}</InfoRow>
-                  {goal.notificationTimes && goal.notificationTimes.length > 0 && (
-                    <InfoRow icon="🔔" label="Reminders">{goal.notificationTimes.map(notificationTimingLabel).join(", ")}</InfoRow>
-                  )}
                   {goalApplies(goal, selectedDate) && (() => {
                     const logged = goalLogs.some(l => l.goalId === goal.id && l.date === dKey(selectedDate));
                     return (
@@ -2155,28 +1990,13 @@ function applyPlannerPayload(
     setSurplusCarryovers: (v: SurplusCarryover[]) => void;
   },
 ) {
-  if (Array.isArray(data.calEvents)) {
-    apply.setCalEvents((data.calEvents as CalEvent[]).map((e) => {
-      const legacy = e as CalEvent & { alertOption?: string; alertTimestamp?: string };
-      if (!Array.isArray(legacy.notificationTimes)) {
-        const migrated = migrateNotificationTimes(legacy);
-        return { ...e, notificationTimes: migrated.notificationTimes, alertTimestamps: migrated.alertTimestamps };
-      }
-      return { ...e, notificationTimes: e.notificationTimes || [], alertTimestamps: e.alertTimestamps || [] };
-    }));
-  }
+  if (Array.isArray(data.calEvents)) apply.setCalEvents(data.calEvents as CalEvent[]);
   if (Array.isArray(data.calTasks)) {
     apply.setCalTasks((data.calTasks as CalTask[]).map((t) => ({ ...t, subtasks: t.subtasks || [] })));
   }
   if (Array.isArray(data.calMeals)) apply.setCalMeals(data.calMeals as CalMeal[]);
   if (Array.isArray(data.calWorkouts)) apply.setCalWorkouts(data.calWorkouts as CalWorkout[]);
-  if (Array.isArray(data.calGoals)) {
-    apply.setCalGoals((data.calGoals as CalGoal[]).map((g) => ({
-      ...g,
-      notificationTimes: g.notificationTimes || [],
-      alertTimestamps: g.alertTimestamps || [],
-    })));
-  }
+  if (Array.isArray(data.calGoals)) apply.setCalGoals(data.calGoals as CalGoal[]);
   if (Array.isArray(data.goalLogs)) apply.setGoalLogs(data.goalLogs as GoalLog[]);
   if (Array.isArray(data.groups)) apply.setGroups(data.groups as Group[]);
   if (data.activeWorkout) {
