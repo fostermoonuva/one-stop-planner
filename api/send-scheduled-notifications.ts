@@ -32,10 +32,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, message: 'No active subscriptions found', sent: 0 });
     }
 
-    // 2. Fetch events due
-    const { data: events } = await supabase
+    // 2. Fetch due events that haven't been notified yet
+    const { data: events, error: eventError } = await supabase
       .from('events')
-      .select('*');
+      .select('*')
+      .lte('alert_timestamp', now)
+      .or('alert_sent.is.null,alert_sent.eq.false');
+
+    if (eventError) throw new Error("Database error: " + eventError.message);
 
     let sentCount = 0;
     const dueItems: { title: string; body: string }[] = [];
@@ -80,6 +84,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             await supabase.from('user_push_subscriptions').delete().eq('endpoint', sub.endpoint);
           }
         }
+      }
+    }
+
+    // 4. Mark due events as notified to prevent re-sending on subsequent cron runs
+    if (events && events.length > 0) {
+      const eventIds = events.map((e: any) => e.id);
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ alert_sent: true })
+        .in('id', eventIds);
+
+      if (updateError) {
+        console.error("Failed to mark events as sent:", updateError.message);
       }
     }
 
