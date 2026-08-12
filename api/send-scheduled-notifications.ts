@@ -54,14 +54,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Default fallback item if no specific items exist
-    if (dueItems.length === 0) {
-      dueItems.push({
-        title: 'One Stop Planner',
-        body: 'Scheduled planner update'
-      });
-    }
-
     // 3. Dispatch to registered devices
     for (const item of dueItems) {
       const payload = JSON.stringify({
@@ -102,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       success: true,
-      notificationsSent: sentCount,
+      sent: sentCount,
       timestamp: now
     });
   } catch (error: any) {
