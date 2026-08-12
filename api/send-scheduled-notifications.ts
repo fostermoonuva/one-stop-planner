@@ -39,15 +39,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         keys: sub.keys || { p256dh: sub.p256dh, auth: sub.auth }
       };
 
-      // 3. Fetch due items from database for this subscription's user
-      // We need to determine what type of items to fetch - events, goals, or tasks
-      // Since this is a general dispatcher, we'll query all item types
-      // and generate dynamic titles/bodies for each
-
-      // Fetch due events
+      // 3. Fetch due notifications from alert_notifications queue
+      const now = new Date().toISOString();
+      
       const { data: dueEvents, error: eventsError } = await supabase
-        .from('planner_data')
-        .select('data')
+        .from('alert_notifications')
+        .select('*')
+        .lte('alert_timestamp', now)
+        .or('sent.is.null,sent.eq.false')
         .eq('user_id', sub.user_id ?? '');
 
       if (eventsError) {
@@ -55,90 +54,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
-      // Process each event that has an alert timestamp within the 5-minute window
-      // For now, we'll process all active events - the actual alertTimestamp logic
-      // would be handled when items are initially queued into alert_notifications
+      // Process each due notification from the alert queue
+      // Each dueEvents entry is an alert_notifications row with title, body, deep_link
+      if (dueEvents && Array.isArray(dueEvents)) {
+        for (const notification of dueEvents) {
+          if (notification && notification.title && notification.body) {
+            const payload = JSON.stringify({
+              title: notification.title,
+              body: notification.body,
+              icon: '/vite.svg',
+              url: notification.deep_link
+            });
 
-      // Since we don't have direct access to the items' alert timestamps from this
-      // general dispatcher, we'll use the existing pattern but with dynamic titles
-      // The actual due items should have been pre-queued into alert_notifications
-
-      // For this handler, we'll send a generic notification since the items
-      // were already filtered when they were added to the alert queue
-      // But we need to extract item info from the data payload
-
-      if (dueEvents?.data && typeof dueEvents.data === 'object') {
-        const payloadData = dueEvents.data as any;
-
-        // Check for events in the stored data
-        if (payloadData.calEvents && Array.isArray(payloadData.calEvents)) {
-          for (const event of payloadData.calEvents) {
-            if (event && event.title && event.startTime) {
-              const alertTimingText = event.alertTimingText || 'at start time';
-              const payload = JSON.stringify({
-                title: `Event: ${event.title}`,
-                body: `Starts at ${event.startTime} (${alertTimingText})`,
-                icon: '/vite.svg',
-                url: '/events'
-              });
-
-              try {
-                await webpush.sendNotification(pushConfig, payload);
-                sentCount++;
-              } catch (err: any) {
-                console.error(`Failed to send event notification to ${sub.endpoint}:`, err);
-                if (err.statusCode === 410 || err.statusCode === 404) {
-                  await supabase.from('user_push_subscriptions').delete().eq('endpoint', sub.endpoint);
-                }
-              }
-            }
-          }
-        }
-
-        // Check for goals in the stored data
-        if (payloadData.calGoals && Array.isArray(payloadData.calGoals)) {
-          for (const goal of payloadData.calGoals) {
-            if (goal && goal.title) {
-              const payload = JSON.stringify({
-                title: `Goal Reminder: ${goal.title}`,
-                body: 'Time to check in on your goal!',
-                icon: '/vite.svg',
-                url: '/goals'
-              });
-
-              try {
-                await webpush.sendNotification(pushConfig, payload);
-                sentCount++;
-              } catch (err: any) {
-                console.error(`Failed to send goal notification to ${sub.endpoint}:`, err);
-                if (err.statusCode === 410 || err.statusCode === 404) {
-                  await supabase.from('user_push_subscriptions').delete().eq('endpoint', sub.endpoint);
-                }
-              }
-            }
-          }
-        }
-
-        // Check for tasks in the stored data
-        if (payloadData.calTasks && Array.isArray(payloadData.calTasks)) {
-          for (const task of payloadData.calTasks) {
-            if (task && task.title && task.dueTime) {
-              const payload = JSON.stringify({
-                title: `Task Due: ${task.title}`,
-                body: `Due at ${task.dueTime}`,
-                icon: '/vite.svg',
-                url: '/tasks'
-              });
-
-              try {
-                await webpush.sendNotification(pushConfig, payload);
-                sentCount++;
-              } catch (err: any) {
-                console.error(`Failed to send task notification to ${sub.endpoint}:`, err);
-                if (err.statusCode === 410 || err.statusCode === 404) {
-                  await supabase.from('user_push_subscriptions').delete().eq('endpoint', sub.endpoint);
-                }
-              }
+            try {
+              await webpush.sendNotification(pushConfig, payload);
+              sentCount++;
+              // Mark as sent in the database
+              await supabase
+                .from('alert_notifications')
+                .update({ sent: true, sent_at: new Date().toISOString() })
+                .eq('id', notification.id);
+            } catch (err: any) {
+              console.error(`Failed to send notification to ${sub.endpoint}:`, err);
             }
           }
         }
